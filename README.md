@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# TestFlow — Sistema de Gestão de Testes
 
-## Getting Started
+Sistema web completo para geração, execução e relatório de casos de teste com IA.
 
-First, run the development server:
+## Funcionalidades
+
+- **Dashboard** — visão geral, métricas e taxa de sucesso
+- **Itens** — cadastro de US, Bugs, Melhorias, Requisitos, Fluxos e Tarefas
+- **Gerador IA** — gera casos de teste BDD ou Step by Step via OpenAI GPT-4o (com mock sem API key)
+- **Casos de Teste** — lista, visualização e gerenciamento de todos os casos
+- **Execução** — fila de casos, registro de status, evidências e bugs
+- **Relatórios** — consolidação de execuções, gráficos e exportação para PDF
+- **Configurações** — criação de projetos, módulos e configurações do sistema
+
+## Setup
+
+### Requisitos
+- Node.js 20+
+- npm
+
+### Instalação
 
 ```bash
+cd testflow
+npm install
+npx prisma generate
+npx prisma migrate dev
+npm run seed
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Acesse: http://localhost:3000
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+**Login demo:** admin@testflow.com / admin123
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Variáveis de ambiente (.env.local)
 
-## Learn More
+```env
+DATABASE_URL="file:./dev.db"
+NEXTAUTH_SECRET="seu-secret-aqui"
+NEXTAUTH_URL="http://localhost:3000"
 
-To learn more about Next.js, take a look at the following resources:
+# Opcional — habilita geração IA real (sem isso usa mock)
+OPENAI_API_KEY="sk-..."
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Geração IA
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+Sem `OPENAI_API_KEY`: o sistema gera casos mock automaticamente (funcional para testes).
 
-## Deploy on Vercel
+Com `OPENAI_API_KEY`: usa GPT-4o para geração real, contextualizada com a descrição do item.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## PDF
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+O relatório em PDF abre numa nova aba com layout formatado e `window.print()` automático. Use "Salvar como PDF" no browser.
+
+## Banco de dados
+
+Por padrão usa SQLite (arquivo local `dev.db`). Para produção, troque para PostgreSQL:
+
+```env
+DATABASE_URL="postgresql://user:pass@host:5432/testflow"
+```
+
+## Stack
+
+- Next.js 16 (App Router) + TypeScript 5
+- Prisma 7 + SQLite/LibSQL
+- Tailwind CSS 4 + Radix UI (componentes)
+- TanStack Query v5 (estado do servidor)
+- NextAuth v5 (autenticação)
+- OpenAI GPT-4o (geração de casos)
+- Recharts (gráficos)
+
+## Telas
+
+| Rota | Tela |
+|---|---|
+| `/` | Dashboard |
+| `/items` | Cadastro de Itens |
+| `/generator` | Gerador de Casos IA |
+| `/cases` | Lista de Casos |
+| `/executions` | Execução de Testes |
+| `/reports` | Relatórios |
+| `/settings` | Configurações |
