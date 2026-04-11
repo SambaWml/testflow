@@ -42,6 +42,7 @@ function buildMarkdown(
       execution: {
         status: string; notes: string | null; relatedBugRef: string | null;
         executor: { name: string }; executedAt: string | null;
+        evidence: { type: string; storageKey: string | null }[];
         case: {
           title: string; format: string; precondition: string | null; priority: string;
           bddGiven: string | null; bddWhen: string | null; bddThen: string | null;
@@ -120,6 +121,17 @@ function buildMarkdown(
 
     if (ex.notes) {
       lines.push(`> 📝 *${ex.notes}*`);
+      lines.push(``);
+    }
+
+    const images = (ex.evidence ?? []).filter((ev) => ev.type === "IMAGE" && ev.storageKey);
+    if (images.length > 0) {
+      const origin = typeof window !== "undefined" ? window.location.origin : "";
+      lines.push(`**Evidências:**`);
+      lines.push(``);
+      images.forEach((ev, idx) => {
+        lines.push(`![Evidência ${idx + 1}](${origin}${ev.storageKey})`);
+      });
       lines.push(``);
     }
 
@@ -460,12 +472,13 @@ function ReportView({ report }: { report: {
       status: string; notes: string | null; relatedBugRef: string | null;
       executor: { name: string }; executedAt: string | null;
       case: { title: string; format: string };
-      evidence: { type: string; fileName: string; linkUrl: string | null; publicUrl: string | null }[];
+      evidence: { type: string; fileName: string; linkUrl: string | null; publicUrl: string | null; storageKey: string | null }[];
     };
   }[];
 } }) {
   const { t, lang } = useLang();
   const terms = getTerms();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const locale = lang === "pt-BR" ? ptBR : undefined;
 
   const { counts, total, passRate } = (() => {
@@ -543,8 +556,28 @@ function ReportView({ report }: { report: {
                   {ex.relatedBugRef && <span className="text-xs font-mono text-red-600">🐛 {ex.relatedBugRef}</span>}
                 </div>
                 {ex.notes && <p className="text-xs text-muted-foreground mt-1 italic">"{ex.notes}"</p>}
-                {ex.evidence.length > 0 && (
-                  <p className="text-xs text-muted-foreground mt-1">📎 {ex.evidence.length} {terms.evidencia.singular.toLowerCase()}{ex.evidence.length > 1 ? "s" : ""}</p>
+                {ex.evidence.filter((ev) => ev.type === "IMAGE" && ev.storageKey).length > 0 && (
+                  <div className="flex gap-1 mt-2 flex-wrap">
+                    {ex.evidence.filter((ev) => ev.type === "IMAGE" && ev.storageKey).map((ev, i) => (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        key={i}
+                        src={ev.storageKey!}
+                        alt={`evidência ${i + 1}`}
+                        className="h-12 w-12 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                        onClick={() => setPreviewUrl(ev.storageKey!)}
+                      />
+                    ))}
+                  </div>
+                )}
+                {ex.evidence.filter((ev) => ev.type === "LINK" && ev.linkUrl).length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-1">
+                    {ex.evidence.filter((ev) => ev.type === "LINK" && ev.linkUrl).map((ev, i) => (
+                      <a key={i} href={ev.linkUrl!} target="_blank" rel="noopener noreferrer" className="text-xs text-blue-600 underline truncate max-w-[160px]">
+                        🔗 {ev.fileName || ev.linkUrl}
+                      </a>
+                    ))}
+                  </div>
                 )}
               </div>
               <StatusBadge status={ex.status} />
@@ -575,6 +608,15 @@ function ReportView({ report }: { report: {
             <p className="text-amber-800">{report.notes}</p>
           </div>
         </>
+      )}
+
+      {previewUrl && (
+        <Dialog open onOpenChange={() => setPreviewUrl(null)}>
+          <DialogContent className="max-w-3xl p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="preview" className="w-full rounded" />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

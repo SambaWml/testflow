@@ -2,8 +2,12 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { slugify } from "@/lib/utils";
 
-export async function GET() {
+export async function GET(req: Request) {
+  const { searchParams } = new URL(req.url);
+  const activeOnly = searchParams.get("activeOnly") === "true";
+
   const projects = await prisma.project.findMany({
+    where: activeOnly ? { isActive: true } : undefined,
     orderBy: { createdAt: "desc" },
     include: { _count: { select: { items: true, cases: true, testPlans: true, executions: true, reports: true } } },
   });

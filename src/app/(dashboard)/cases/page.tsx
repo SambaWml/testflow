@@ -10,7 +10,9 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { FilterBar } from "@/components/ui/filter-bar";
-import { Trash2, Play, ChevronDown, ChevronUp, TestTube2, LayoutGrid, List, CheckSquare, Square, AlertTriangle, X } from "lucide-react";
+import { Trash2, Pencil, ChevronDown, ChevronUp, TestTube2, LayoutGrid, List, CheckSquare, Square, AlertTriangle, X, Plus } from "lucide-react";
+import { CaseEditDialog } from "@/components/cases/case-edit-dialog";
+import { CaseCreateDialog } from "@/components/cases/case-create-dialog";
 import { getPriorities } from "@/lib/enum-config";
 import { Tip } from "@/components/ui/hint";
 
@@ -38,7 +40,8 @@ export default function CasesPage() {
   const { t, lang } = useLang();
   const [terms, setTerms] = useState(() => getTerms());
   useEffect(() => { setTerms(getTerms()); }, []);
-  const [selectedCase, setSelectedCase] = useState<string | null>(null);
+  const [editingCase, setEditingCase] = useState<string | null>(null);
+  const [createOpen, setCreateOpen] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());
   const [viewMode, setViewMode] = useState<ViewMode>("list");
   const [search, setSearch] = useState("");
@@ -49,7 +52,7 @@ export default function CasesPage() {
   // Fetch todos os projetos para popular o filtro
   const { data: projectsData } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => fetch("/api/projects").then((r) => r.json()),
+    queryFn: () => fetch("/api/projects?activeOnly=true").then((r) => r.json()),
   });
 
   // Fetch todos os casos (sem filtro de API — filtramos no client)
@@ -58,11 +61,6 @@ export default function CasesPage() {
     queryFn: () => fetch("/api/cases?limit=500").then((r) => r.json()),
   });
 
-  const { data: caseDetail } = useQuery({
-    queryKey: ["case", selectedCase],
-    queryFn: () => fetch(`/api/cases/${selectedCase}`).then((r) => r.json()),
-    enabled: !!selectedCase,
-  });
 
   const deleteMutation = useMutation({
     mutationFn: (id: string) => fetch(`/api/cases/${id}`, { method: "DELETE" }),
@@ -159,7 +157,15 @@ export default function CasesPage() {
 
   return (
     <div className="flex flex-col h-full">
-      <Topbar title={terms.casoDeTeste.plural} subtitle={t.cases.subtitle} />
+      <Topbar
+        title={terms.casoDeTeste.plural}
+        subtitle={t.cases.subtitle}
+        actions={
+          <Button size="sm" onClick={() => setCreateOpen(true)}>
+            <Plus className="h-4 w-4" /> {t.cases.new_case}
+          </Button>
+        }
+      />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* Toolbar */}
@@ -252,7 +258,7 @@ export default function CasesPage() {
             cases={cases}
             expandedCards={expandedCards}
             onToggleExpand={toggleExpand}
-            onViewDetail={setSelectedCase}
+            onViewDetail={setEditingCase}
             onDelete={(id) => { if (confirm(t.cases.single_delete_confirm)) deleteMutation.mutate(id); }}
             selected={selected}
             onToggleSelect={toggleSelect}
@@ -262,7 +268,7 @@ export default function CasesPage() {
             cases={cases}
             expandedCards={expandedCards}
             onToggleExpand={toggleExpand}
-            onViewDetail={setSelectedCase}
+            onViewDetail={setEditingCase}
             onDelete={(id) => { if (confirm(t.cases.single_delete_confirm)) deleteMutation.mutate(id); }}
             selected={selected}
             onToggleSelect={toggleSelect}
@@ -270,15 +276,15 @@ export default function CasesPage() {
         )}
       </div>
 
-      {/* Case detail dialog */}
-      <Dialog open={!!selectedCase} onOpenChange={(o) => !o && setSelectedCase(null)}>
-        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
-          <DialogHeader>
-            <DialogTitle>{caseDetail?.title ?? terms.casoDeTeste.singular}</DialogTitle>
-          </DialogHeader>
-          {caseDetail && <CaseDetailView tc={caseDetail} />}
-        </DialogContent>
-      </Dialog>
+      <CaseEditDialog
+        caseId={editingCase}
+        open={!!editingCase}
+        onOpenChange={(o) => { if (!o) setEditingCase(null); }}
+      />
+      <CaseCreateDialog
+        open={createOpen}
+        onOpenChange={setCreateOpen}
+      />
 
       {/* Bulk delete confirmation dialog */}
       <Dialog open={bulkConfirm} onOpenChange={(o) => { if (!o && !bulkDeleting) setBulkConfirm(false); }}>
@@ -367,9 +373,9 @@ function ListView({ cases, expandedCards, onToggleExpand, onViewDetail, onDelete
                       {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                     </Button>
                   </Tip>
-                  <Tip text={t.cases.view_detail}>
+                  <Tip text={t.cases.edit_case}>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => onViewDetail(tc.id)}>
-                      <Play className="h-4 w-4" />
+                      <Pencil className="h-4 w-4" />
                     </Button>
                   </Tip>
                   <Tip text={t.cases.delete_tip}>
@@ -452,7 +458,7 @@ function GridView({ cases, expandedCards, onToggleExpand, onViewDetail, onDelete
                           {expanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onViewDetail(tc.id)}>
-                          <Play className="h-3.5 w-3.5" />
+                          <Pencil className="h-3.5 w-3.5" />
                         </Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7 text-red-500 hover:text-red-600 hover:bg-red-50"
                           onClick={() => onDelete(tc.id)}>
@@ -524,60 +530,3 @@ function BDDBlock({ label, text, color }: { label: string; text: string; color: 
   );
 }
 
-function CaseDetailView({ tc }: { tc: {
-  title: string; format: string; priority: string; precondition: string | null;
-  bddGiven: string | null; bddWhen: string | null; bddThen: string | null;
-  steps: { id: string; order: number; description: string; expectedData: string | null }[];
-  expectedResult: string | null; notes: string | null; item: { title: string; reference: string | null } | null;
-} }) {
-  const { t } = useLang();
-  return (
-    <div className="space-y-4 text-sm">
-      {tc.item && (
-        <div className="p-3 rounded-md bg-slate-50 border">
-          <p className="text-xs text-muted-foreground">{t.executions.precondition}</p>
-          <p className="font-medium">{tc.item.title}</p>
-          {tc.item.reference && <p className="text-xs text-muted-foreground font-mono">{tc.item.reference}</p>}
-        </div>
-      )}
-      {tc.precondition && (
-        <div>
-          <p className="text-xs font-semibold text-muted-foreground uppercase mb-1">{t.cases.precondition}</p>
-          <p>{tc.precondition}</p>
-        </div>
-      )}
-      {tc.format === "BDD" ? (
-        <div className="space-y-2">
-          {tc.bddGiven && <BDDBlock label={t.cases.given} text={tc.bddGiven} color="bg-blue-50 border-blue-200" />}
-          {tc.bddWhen && <BDDBlock label={t.cases.when} text={tc.bddWhen} color="bg-purple-50 border-purple-200" />}
-          {tc.bddThen && <BDDBlock label={t.cases.then} text={tc.bddThen} color="bg-green-50 border-green-200" />}
-        </div>
-      ) : (
-        <div className="space-y-2">
-          <p className="text-xs font-semibold text-muted-foreground uppercase">{t.cases.steps}</p>
-          {tc.steps.map((step) => (
-            <div key={step.id} className="flex gap-3 p-2 rounded-md border">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs shrink-0">{step.order}</span>
-              <div>
-                <p>{step.description}</p>
-                {step.expectedData && <p className="text-xs text-muted-foreground mt-1">→ {step.expectedData}</p>}
-              </div>
-            </div>
-          ))}
-          {tc.expectedResult && (
-            <div className="p-3 rounded-md bg-green-50 border border-green-200">
-              <p className="text-xs font-bold text-green-800 mb-1">{t.cases.expected_result}</p>
-              <p className="text-green-900">{tc.expectedResult}</p>
-            </div>
-          )}
-        </div>
-      )}
-      {tc.notes && (
-        <div className="p-3 rounded-md bg-amber-50 border border-amber-200">
-          <p className="text-xs font-semibold text-amber-800 mb-1">{t.executions.observations}</p>
-          <p className="text-amber-900">{tc.notes}</p>
-        </div>
-      )}
-    </div>
-  );
-}

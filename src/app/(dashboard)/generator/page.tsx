@@ -102,7 +102,7 @@ function GeneratorContent() {
 
   const { data: projects } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => fetch("/api/projects").then((r) => r.json()),
+    queryFn: () => fetch("/api/projects?activeOnly=true").then((r) => r.json()),
   });
 
   const { data: selectedItem } = useQuery({

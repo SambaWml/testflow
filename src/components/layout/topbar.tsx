@@ -1,6 +1,7 @@
 "use client";
 
-import { Bell, Eye, EyeOff, Pencil, Loader2, User, LogOut } from "lucide-react";
+import { Bell, Eye, EyeOff, Pencil, Loader2, User, LogOut, Moon, Sun } from "lucide-react";
+import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -23,6 +24,7 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
   const { data: session } = useSession();
   const { t } = useLang();
+  const { theme, toggleTheme } = useTheme();
 
   const initials = (session?.user?.name ?? "U")
     .split(" ")
@@ -32,13 +34,16 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
     .toUpperCase();
 
   return (
-    <header className="flex items-center justify-between px-6 py-4 border-b bg-white shrink-0">
+    <header className="flex items-center justify-between px-6 py-4 border-b bg-background shrink-0">
       <div>
         <h1 className="text-xl font-semibold text-foreground">{title}</h1>
         {subtitle && <p className="text-sm text-muted-foreground">{subtitle}</p>}
       </div>
       <div className="flex items-center gap-3 mr-2">
         {actions}
+        <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === "dark" ? "Modo claro" : "Modo escuro"}>
+          {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+        </Button>
         <Button variant="ghost" size="icon">
           <Bell className="h-4 w-4" />
         </Button>

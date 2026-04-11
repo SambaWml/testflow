@@ -5,6 +5,7 @@ import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LangProvider } from "@/contexts/lang-context";
+import { ThemeProvider } from "@/contexts/theme-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -16,13 +17,15 @@ export function Providers({ children }: { children: React.ReactNode }) {
 
   return (
     <SessionProvider>
-      <LangProvider>
-        <QueryClientProvider client={queryClient}>
-          <TooltipProvider delayDuration={300}>
-            {children}
-          </TooltipProvider>
-        </QueryClientProvider>
-      </LangProvider>
+      <ThemeProvider>
+        <LangProvider>
+          <QueryClientProvider client={queryClient}>
+            <TooltipProvider delayDuration={300}>
+              {children}
+            </TooltipProvider>
+          </QueryClientProvider>
+        </LangProvider>
+      </ThemeProvider>
     </SessionProvider>
   );
 }

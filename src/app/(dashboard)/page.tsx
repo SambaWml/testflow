@@ -36,7 +36,7 @@ export default function DashboardPage() {
   const stats = data?.stats ?? { items: 0, cases: 0, executions: 0, passRate: 0 };
   const statusData = data?.statusDistribution ?? [];
   const recentReports = data?.recentReports ?? [];
-  const recentExecutions = data?.recentExecutions ?? [];
+  const recentPlans = data?.recentPlans ?? [];
 
   const quickActions = [
     { href: "/projects", icon: FileText, label: t.dashboard.register_item, desc: t.dashboard.register_item_desc },
@@ -110,8 +110,8 @@ export default function DashboardPage() {
           </Card>
         </div>
 
-        {/* Recent executions */}
-        {recentExecutions.length > 0 && (
+        {/* Recent test plans */}
+        {recentPlans.length > 0 && (
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="text-base">{t.dashboard.recent_executions}</CardTitle>
@@ -121,20 +121,29 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {recentExecutions.map((ex: { id: string; status: string; case: { title: string }; executor: { name: string }; executedAt: string | null }) => (
-                  <div key={ex.id} className="flex items-center justify-between py-2 border-b last:border-0">
+                {recentPlans.map((plan: {
+                  id: string; name: string; status: string; result: string | null;
+                  environment: string; createdAt: string; project: { name: string };
+                  totalCases: number; passRate: number | null;
+                }) => (
+                  <div key={plan.id} className="flex items-center justify-between py-2 border-b last:border-0">
                     <div className="flex items-center gap-3">
-                      <StatusIcon status={ex.status} />
+                      <PlanStatusIcon status={plan.status} result={plan.result} />
                       <div>
-                        <p className="text-sm font-medium truncate max-w-xs">{ex.case.title}</p>
-                        <p className="text-xs text-muted-foreground">{ex.executor.name}</p>
+                        <p className="text-sm font-medium truncate max-w-xs">{plan.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {plan.project.name}
+                          {plan.environment && ` · ${plan.environment}`}
+                          {" · "}{format(new Date(plan.createdAt), "dd/MM/yyyy", { locale: ptBR })}
+                        </p>
                       </div>
                     </div>
-                    <div className="text-right">
-                      <ExecutionBadge status={ex.status} />
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {ex.executedAt ? format(new Date(ex.executedAt), "dd/MM HH:mm", { locale: ptBR }) : "—"}
-                      </p>
+                    <div className="text-right flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground">{plan.totalCases} casos</span>
+                      {plan.passRate !== null
+                        ? <Badge variant={plan.passRate >= 80 ? "success" : plan.passRate >= 50 ? "warning" : "destructive"}>{plan.passRate}% Pass</Badge>
+                        : <PlanStatusBadge status={plan.status} />
+                      }
                     </div>
                   </div>
                 ))}
@@ -201,17 +210,23 @@ function StatCard({ icon: Icon, label, value, color, bg, loading }: { icon: Reac
   );
 }
 
-function StatusIcon({ status }: { status: string }) {
-  if (status === "PASS") return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
-  if (status === "FAIL") return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
-  if (status === "BLOCKED") return <AlertTriangle className="h-4 w-4 text-orange-500 shrink-0" />;
+function PlanStatusIcon({ status, result }: { status: string; result: string | null }) {
+  if (status === "COMPLETED") {
+    if (result === "PASS") return <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />;
+    if (result === "FAIL") return <XCircle className="h-4 w-4 text-red-500 shrink-0" />;
+    return <CheckCircle2 className="h-4 w-4 text-blue-500 shrink-0" />;
+  }
+  if (status === "IN_PROGRESS") return <Play className="h-4 w-4 text-orange-500 shrink-0" />;
   return <Clock className="h-4 w-4 text-gray-400 shrink-0" />;
 }
 
-function ExecutionBadge({ status }: { status: string }) {
-  const variants: Record<string, "success" | "destructive" | "warning" | "secondary" | "info"> = {
-    PASS: "success", FAIL: "destructive", BLOCKED: "warning", RETEST: "info", SKIPPED: "secondary",
+function PlanStatusBadge({ status }: { status: string }) {
+  const map: Record<string, { label: string; variant: "success" | "destructive" | "warning" | "secondary" | "info" }> = {
+    PENDING:     { label: "Pendente",     variant: "secondary" },
+    IN_PROGRESS: { label: "Em andamento", variant: "info" },
+    COMPLETED:   { label: "Concluído",    variant: "success" },
+    CANCELLED:   { label: "Cancelado",    variant: "destructive" },
   };
-  const labels: Record<string, string> = { PASS: "Pass", FAIL: "Fail", BLOCKED: "Blocked", NOT_EXECUTED: "Não Exec.", RETEST: "Retest", SKIPPED: "Skipped" };
-  return <Badge variant={variants[status] ?? "secondary"}>{labels[status] ?? status}</Badge>;
+  const { label, variant } = map[status] ?? { label: status, variant: "secondary" };
+  return <Badge variant={variant}>{label}</Badge>;
 }

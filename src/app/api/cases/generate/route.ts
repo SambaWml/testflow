@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-
-// Priority order for AI provider:
-// 1. Ollama (OLLAMA_URL set)
-// 2. OpenAI (OPENAI_API_KEY set)
-// 3. Mock (nenhuma variável configurada)
+import { getAIConfig } from "@/lib/ai-config";
 
 export async function POST(req: Request) {
   try {
@@ -41,64 +37,39 @@ export async function POST(req: Request) {
 
     console.log("[generate] context length:", context.length, "| preview:", context.slice(0, 120));
 
-    const ollamaUrl = process.env.OLLAMA_URL;
-    const ollamaModel = process.env.OLLAMA_MODEL ?? "llama3.2";
-    const openaiKey = process.env.OPENAI_API_KEY;
-    const manusKey = process.env.MANUS_API_KEY;
-    const manusBaseUrl = (process.env.MANUS_BASE_URL ?? "https://api.manus.ai").replace(/\/$/, "");
-
+    const aiConfig = await getAIConfig();
     const options = { context, quantity, format, language, coverageLevel, testType };
 
-    if (manusKey) {
+    if (aiConfig.activeProvider === "manus" && aiConfig.manus.apiKey) {
       try {
-        return await generateWithManus({ ...options, apiKey: manusKey, baseUrl: manusBaseUrl });
-      } catch (err) {
-        const msg = String(err);
-        console.error("Manus failed:", msg);
-        if (!ollamaUrl && !openaiKey) {
-          return NextResponse.json({
-            error: `Manus IA falhou: ${msg}`,
-            hint: "Verifique se MANUS_API_KEY está correta e o serviço está disponível.",
-            provider: "manus",
-          }, { status: 503 });
-        }
-      }
-    }
-
-    if (ollamaUrl) {
-      try {
-        return await generateWithLLM({
+        return await generateWithManus({
           ...options,
-          baseUrl: `${ollamaUrl.replace(/\/$/, "")}/v1`,
-          model: ollamaModel,
-          apiKey: "ollama",
+          apiKey: aiConfig.manus.apiKey,
+          baseUrl: aiConfig.manus.baseUrl.replace(/\/$/, ""),
         });
       } catch (err) {
-        const msg = String(err);
-        console.error("Ollama failed:", msg);
-        if (!openaiKey) {
-          return NextResponse.json({
-            error: `Ollama falhou: ${msg}`,
-            hint: "Verifique se o Ollama está rodando e o modelo '${ollamaModel}' está instalado. Execute: ollama serve && ollama pull ${ollamaModel}",
-            provider: "ollama",
-          }, { status: 503 });
-        }
+        console.error("Manus failed:", err);
+        return NextResponse.json({
+          error: `Manus IA falhou: ${String(err)}`,
+          hint: "Verifique se a chave da Manus está correta e o serviço está disponível.",
+          provider: "manus",
+        }, { status: 503 });
       }
     }
 
-    if (openaiKey) {
+    if (aiConfig.activeProvider === "openai" && aiConfig.openai.apiKey) {
       try {
         return await generateWithLLM({
           ...options,
           baseUrl: "https://api.openai.com/v1",
-          model: process.env.OPENAI_MODEL ?? "gpt-4o",
-          apiKey: openaiKey,
+          model: aiConfig.openai.model,
+          apiKey: aiConfig.openai.apiKey,
         });
       } catch (err) {
         console.error("OpenAI failed:", err);
         return NextResponse.json({
           error: `OpenAI falhou: ${String(err)}`,
-          hint: "Verifique se a OPENAI_API_KEY está correta e tem créditos disponíveis.",
+          hint: "Verifique se a API Key está correta e tem créditos disponíveis.",
           provider: "openai",
         }, { status: 503 });
       }
@@ -106,7 +77,7 @@ export async function POST(req: Request) {
 
     return NextResponse.json({
       error: "Nenhum provedor de IA configurado.",
-      hint: "Configure OLLAMA_URL ou OPENAI_API_KEY no arquivo .env.local e reinicie o servidor.",
+      hint: "Configure um provedor em Configurações → Provedor de IA.",
       provider: "none",
     }, { status: 503 });
   } catch (error) {

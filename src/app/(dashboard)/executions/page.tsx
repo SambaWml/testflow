@@ -51,7 +51,7 @@ interface TestPlan {
   project: { id: string; name: string };
   creator: { name: string };
   items: PlanCase[];
-  executions: { id: string; caseId: string; status: string; notes: string | null; relatedBugRef: string | null; case: { title: string; format: string } | null; evidence: { id: string; linkUrl: string | null; fileName: string }[] }[];
+  executions: { id: string; caseId: string; status: string; notes: string | null; relatedBugRef: string | null; case: { title: string; format: string } | null; evidence: { id: string; linkUrl: string | null; fileName: string; type: string; storageKey: string | null }[] }[];
 }
 
 const STATUS_ICONS: Record<string, React.ElementType> = {
@@ -260,7 +260,7 @@ function CreatePlanView({ onBack, onCreate }: { onBack: () => void; onCreate: ()
 
   const { data: projects } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => fetch("/api/projects").then((r) => r.json()),
+    queryFn: () => fetch("/api/projects?activeOnly=true").then((r) => r.json()),
   });
 
   const { data: casesData } = useQuery({
@@ -416,8 +416,8 @@ function CreatePlanView({ onBack, onCreate }: { onBack: () => void; onCreate: ()
 }
 
 /* ── Execute plan ────────────────────────────────────────────────── */
-interface CaseDraft { status: string; notes: string; bugRef: string; links: string[] }
-const emptyDraft = (): CaseDraft => ({ status: "NOT_EXECUTED", notes: "", bugRef: "", links: [""] });
+interface CaseDraft { status: string; notes: string; bugRef: string; links: string[]; images: string[] }
+const emptyDraft = (): CaseDraft => ({ status: "NOT_EXECUTED", notes: "", bugRef: "", links: [""], images: [] });
 
 function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => void }) {
   const qc = useQueryClient();
@@ -452,6 +452,7 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
         notes: existingResult.notes ?? "",
         bugRef: existingResult.relatedBugRef ?? "",
         links: existingResult.evidence?.filter((ev) => ev.linkUrl).map((ev) => ev.linkUrl!) ?? [""],
+        images: existingResult.evidence?.filter((ev) => ev.type === "IMAGE").map((ev) => ev.storageKey) ?? [],
       }
     : emptyDraft());
 
@@ -481,7 +482,7 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
     if (!activeItem || !plan) return;
     setSaving(true);
     try {
-      await fetch("/api/executions", {
+      const execRes = await fetch("/api/executions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -496,18 +497,34 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
           executedAt: new Date().toISOString(),
         }),
       });
+      const execJson = await execRes.json();
       const validLinks = activeDraft.links.map((l) => l.trim()).filter(Boolean);
-      if (validLinks.length > 0) {
-        const exec = await fetch("/api/executions").then((r) => r.json());
-        const lastId = exec.executions?.[0]?.id;
+      const validImages = activeDraft.images ?? [];
+      if (validLinks.length > 0 || validImages.length > 0) {
+        const lastId = execJson.execution?.id;
         if (lastId) {
-          await Promise.all(validLinks.map((url) =>
-            fetch("/api/evidence", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ executionId: lastId, type: "LINK", fileName: url, storageKey: url, linkUrl: url }),
-            })
-          ));
+          await Promise.all([
+            ...validLinks.map((url) =>
+              fetch("/api/evidence", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ executionId: lastId, type: "LINK", fileName: url, storageKey: url, linkUrl: url }),
+              })
+            ),
+            ...validImages.map((storageKey) =>
+              fetch("/api/evidence", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  executionId: lastId,
+                  type: "IMAGE",
+                  fileName: storageKey.split("/").pop() ?? storageKey,
+                  storageKey,
+                  publicUrl: storageKey,
+                }),
+              })
+            ),
+          ]);
         }
       }
       // Clear draft for this case after saving
@@ -705,10 +722,10 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
                       ))}
                     </div>
                   </div>
-                  <div className="rounded-md border-2 border-dashed p-4 text-center text-muted-foreground text-sm">
-                    <Upload className="h-6 w-6 mx-auto mb-2 opacity-50" />
-                    <p>Arraste imagens, PDFs ou logs aqui</p>
-                  </div>
+                  <ImageUploadField
+                    images={activeDraft.images ?? []}
+                    onChange={(imgs) => setDraft({ images: imgs })}
+                  />
                   <div className="flex gap-2">
                     <Button
                       variant="outline"
@@ -791,7 +808,7 @@ function HistoryTab() {
 
   const { data: projectsData } = useQuery({
     queryKey: ["projects"],
-    queryFn: () => fetch("/api/projects").then((r) => r.json()),
+    queryFn: () => fetch("/api/projects?activeOnly=true").then((r) => r.json()),
   });
 
   const { data, isLoading } = useQuery({
@@ -989,6 +1006,89 @@ function HistoryTab() {
             );
           })}
         </div>
+      )}
+    </div>
+  );
+}
+
+/* ── ImageUploadField ─────────────────────────────────────────────── */
+function ImageUploadField({ images, onChange }: { images: string[]; onChange: (imgs: string[]) => void }) {
+  const [uploading, setUploading] = useState(false);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        const fd = new FormData();
+        fd.append("file", file);
+        const res = await fetch("/api/upload", { method: "POST", body: fd });
+        if (res.ok) {
+          const json = await res.json();
+          uploaded.push(json.url as string);
+        }
+      }
+      if (uploaded.length > 0) onChange([...images, ...uploaded]);
+    } finally {
+      setUploading(false);
+    }
+  }
+
+  function removeImage(url: string) {
+    onChange(images.filter((u) => u !== url));
+  }
+
+  return (
+    <div className="space-y-2">
+      <Label className="text-sm font-medium">Evidências (imagens)</Label>
+
+      {images.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {images.map((url) => (
+            <div key={url} className="relative group">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={url}
+                alt="evidência"
+                className="h-16 w-16 object-cover rounded border cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setPreviewUrl(url)}
+              />
+              <button
+                type="button"
+                onClick={() => removeImage(url)}
+                className="absolute -top-1.5 -right-1.5 hidden group-hover:flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white text-xs leading-none"
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <label className="flex items-center gap-2 cursor-pointer w-fit">
+        <input
+          type="file"
+          accept="image/*"
+          multiple
+          className="sr-only"
+          onChange={(e) => handleFiles(e.target.files)}
+          disabled={uploading}
+        />
+        <span className="inline-flex items-center gap-1.5 rounded-md border border-input bg-background px-3 py-1.5 text-xs font-medium shadow-sm hover:bg-accent hover:text-accent-foreground transition-colors">
+          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+          {uploading ? "Enviando..." : "Adicionar imagem"}
+        </span>
+      </label>
+
+      {previewUrl && (
+        <Dialog open onOpenChange={() => setPreviewUrl(null)}>
+          <DialogContent className="max-w-3xl p-2">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={previewUrl} alt="preview" className="w-full rounded" />
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );

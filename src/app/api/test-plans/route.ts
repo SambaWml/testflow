@@ -11,6 +11,7 @@ export async function GET(req: Request) {
 
     const plans = await prisma.testPlan.findMany({
       where: {
+        project: { isActive: true },
         ...(status && { status }),
         ...(projectId && { projectId }),
       },

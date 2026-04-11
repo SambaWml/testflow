@@ -19,20 +19,42 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   const { id } = await params;
   const body = await req.json();
 
-  const tc = await prisma.testCase.update({
-    where: { id },
-    data: {
-      ...(body.title && { title: body.title }),
-      ...(body.priority && { priority: body.priority }),
-      ...(body.precondition !== undefined && { precondition: body.precondition }),
-      ...(body.bddGiven !== undefined && { bddGiven: body.bddGiven }),
-      ...(body.bddWhen !== undefined && { bddWhen: body.bddWhen }),
-      ...(body.bddThen !== undefined && { bddThen: body.bddThen }),
-      ...(body.expectedResult !== undefined && { expectedResult: body.expectedResult }),
-      ...(body.notes !== undefined && { notes: body.notes }),
-      version: { increment: 1 },
-    },
+  const tc = await prisma.$transaction(async (tx) => {
+    const updated = await tx.testCase.update({
+      where: { id },
+      data: {
+        ...(body.title && { title: body.title }),
+        ...(body.priority && { priority: body.priority }),
+        ...(body.precondition !== undefined && { precondition: body.precondition }),
+        ...(body.bddGiven !== undefined && { bddGiven: body.bddGiven }),
+        ...(body.bddWhen !== undefined && { bddWhen: body.bddWhen }),
+        ...(body.bddThen !== undefined && { bddThen: body.bddThen }),
+        ...(body.expectedResult !== undefined && { expectedResult: body.expectedResult }),
+        ...(body.notes !== undefined && { notes: body.notes }),
+        version: { increment: 1 },
+      },
+    });
+
+    if (Array.isArray(body.steps)) {
+      await tx.testStep.deleteMany({ where: { caseId: id } });
+      const validSteps = (body.steps as { description: string; expectedData?: string }[]).filter(
+        (s) => s.description?.trim()
+      );
+      if (validSteps.length > 0) {
+        await tx.testStep.createMany({
+          data: validSteps.map((s, i) => ({
+            caseId: id,
+            order: i + 1,
+            description: s.description.trim(),
+            expectedData: s.expectedData?.trim() || null,
+          })),
+        });
+      }
+    }
+
+    return updated;
   });
+
   return NextResponse.json({ tc });
 }
 

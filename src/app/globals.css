@@ -1,5 +1,8 @@
 @import "tailwindcss";
 
+/* Use class-based dark mode */
+@variant dark (&:where(.dark, .dark *));
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -26,6 +29,7 @@
   --radius-xl: calc(var(--radius) + 4px);
 }
 
+/* ── Light mode ────────────────────────────────────────────────────── */
 :root {
   --background: #ffffff;
   --foreground: #0f172a;
@@ -47,11 +51,67 @@
   --input: #e2e8f0;
   --ring: #2563eb;
   --radius: 0.5rem;
+
+  /* Semantic surfaces */
+  --surface-green-bg: #f0fdf4;
+  --surface-green-border: #bbf7d0;
+  --surface-green-text: #166534;
+  --surface-red-bg: #fef2f2;
+  --surface-red-border: #fecaca;
+  --surface-red-text: #991b1b;
+  --surface-blue-bg: #eff6ff;
+  --surface-blue-border: #bfdbfe;
+  --surface-blue-text: #1e40af;
+  --surface-amber-bg: #fffbeb;
+  --surface-amber-border: #fde68a;
+  --surface-amber-text: #92400e;
+  --surface-slate-bg: #f8fafc;
+  --surface-purple-bg: #faf5ff;
+  --surface-purple-border: #e9d5ff;
 }
 
-* {
-  border-color: var(--border);
+/* ── Dark mode ─────────────────────────────────────────────────────── */
+.dark {
+  --background: #1c2333;
+  --foreground: #e2e8f0;
+  --card: #242d3f;
+  --card-foreground: #e2e8f0;
+  --popover: #242d3f;
+  --popover-foreground: #e2e8f0;
+  --primary: #4f8ef7;
+  --primary-foreground: #ffffff;
+  --secondary: #2d3a50;
+  --secondary-foreground: #cbd5e1;
+  --muted: #242d3f;
+  --muted-foreground: #8fa3be;
+  --accent: #2d3a50;
+  --accent-foreground: #e2e8f0;
+  --destructive: #f87171;
+  --destructive-foreground: #ffffff;
+  --border: #2d3a50;
+  --input: #2d3a50;
+  --ring: #4f8ef7;
+
+  /* Semantic surfaces — muted tints for dark mode */
+  --surface-green-bg: rgba(34, 197, 94, 0.08);
+  --surface-green-border: rgba(34, 197, 94, 0.2);
+  --surface-green-text: #4ade80;
+  --surface-red-bg: rgba(239, 68, 68, 0.08);
+  --surface-red-border: rgba(239, 68, 68, 0.2);
+  --surface-red-text: #f87171;
+  --surface-blue-bg: rgba(59, 130, 246, 0.08);
+  --surface-blue-border: rgba(59, 130, 246, 0.2);
+  --surface-blue-text: #60a5fa;
+  --surface-amber-bg: rgba(245, 158, 11, 0.08);
+  --surface-amber-border: rgba(245, 158, 11, 0.2);
+  --surface-amber-text: #fbbf24;
+  --surface-slate-bg: #242d3f;
+  --surface-purple-bg: rgba(168, 85, 247, 0.08);
+  --surface-purple-border: rgba(168, 85, 247, 0.2);
 }
+
+/* ── Base ──────────────────────────────────────────────────────────── */
+* { border-color: var(--border); }
 
 body {
   background: var(--background);
@@ -59,8 +119,80 @@ body {
   font-family: system-ui, -apple-system, sans-serif;
 }
 
-/* Scrollbar */
-::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+/* ── Dark mode global overrides ────────────────────────────────────── */
+
+/* White / neutral surfaces */
+.dark .bg-white           { background-color: var(--card) !important; }
+.dark .bg-slate-50        { background-color: var(--surface-slate-bg) !important; }
+.dark .bg-gray-50         { background-color: var(--surface-slate-bg) !important; }
+
+/* Skeleton / pulse */
+.dark .animate-pulse      { background-color: #252d3d !important; }
+
+/* Semantic green */
+.dark .bg-green-50        { background-color: var(--surface-green-bg) !important; }
+.dark .border-green-200   { border-color: var(--surface-green-border) !important; }
+.dark .text-green-900     { color: var(--surface-green-text) !important; }
+.dark .text-green-800     { color: var(--surface-green-text) !important; }
+.dark .text-green-700     { color: var(--surface-green-text) !important; }
+.dark .text-green-600     { color: #4ade80 !important; }
+
+/* Semantic red */
+.dark .bg-red-50          { background-color: var(--surface-red-bg) !important; }
+.dark .border-red-200     { border-color: var(--surface-red-border) !important; }
+.dark .text-red-900       { color: var(--surface-red-text) !important; }
+.dark .text-red-800       { color: var(--surface-red-text) !important; }
+.dark .text-red-700       { color: var(--surface-red-text) !important; }
+.dark .text-red-600       { color: #f87171 !important; }
+.dark .text-red-500       { color: #f87171 !important; }
+.dark .hover\:bg-red-50:hover { background-color: var(--surface-red-bg) !important; }
+
+/* Semantic blue */
+.dark .bg-blue-50         { background-color: var(--surface-blue-bg) !important; }
+.dark .border-blue-200    { border-color: var(--surface-blue-border) !important; }
+.dark .text-blue-900      { color: var(--surface-blue-text) !important; }
+.dark .text-blue-800      { color: var(--surface-blue-text) !important; }
+.dark .text-blue-700      { color: var(--surface-blue-text) !important; }
+.dark .text-blue-600      { color: #60a5fa !important; }
+
+/* Semantic amber */
+.dark .bg-amber-50        { background-color: var(--surface-amber-bg) !important; }
+.dark .border-amber-200   { border-color: var(--surface-amber-border) !important; }
+.dark .text-amber-900     { color: var(--surface-amber-text) !important; }
+.dark .text-amber-800     { color: var(--surface-amber-text) !important; }
+.dark .text-amber-700     { color: var(--surface-amber-text) !important; }
+.dark .hover\:bg-amber-50:hover { background-color: var(--surface-amber-bg) !important; }
+
+/* Semantic purple */
+.dark .bg-purple-50       { background-color: var(--surface-purple-bg) !important; }
+.dark .border-purple-200  { border-color: var(--surface-purple-border) !important; }
+
+/* Slate text */
+.dark .text-slate-700     { color: #a8bbd4 !important; }
+.dark .text-slate-600     { color: #a8bbd4 !important; }
+.dark .bg-slate-800       { background-color: #1c2333 !important; }
+
+/* Badge / pill colors that have light backgrounds */
+.dark .bg-green-100       { background-color: var(--surface-green-bg) !important; }
+.dark .text-green-800     { color: var(--surface-green-text) !important; }
+.dark .bg-red-100         { background-color: var(--surface-red-bg) !important; }
+.dark .text-red-800       { color: var(--surface-red-text) !important; }
+.dark .bg-blue-100        { background-color: var(--surface-blue-bg) !important; }
+.dark .text-blue-800      { color: var(--surface-blue-text) !important; }
+.dark .bg-orange-100      { background-color: rgba(249,115,22,0.1) !important; }
+.dark .text-orange-800    { color: #fb923c !important; }
+.dark .bg-purple-100      { background-color: var(--surface-purple-bg) !important; }
+.dark .text-purple-800    { color: #c084fc !important; }
+.dark .bg-gray-100        { background-color: #252d3d !important; }
+.dark .text-gray-700      { color: #94a3b8 !important; }
+
+/* Inline code blocks (settings, PDF route reference) */
+.dark code                { background-color: #0f1117 !important; color: #7dd3fc !important; }
+
+/* ── Scrollbar ─────────────────────────────────────────────────────── */
+::-webkit-scrollbar         { width: 6px; height: 6px; }
+::-webkit-scrollbar-track   { background: transparent; }
+::-webkit-scrollbar-thumb   { background: #cbd5e1; border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+.dark ::-webkit-scrollbar-thumb      { background: #334155; }
+.dark ::-webkit-scrollbar-thumb:hover { background: #475569; }

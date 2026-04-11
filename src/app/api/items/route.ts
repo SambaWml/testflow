@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
   const items = await prisma.item.findMany({
     where: {
+      project: { isActive: true },
       ...(q && { OR: [{ title: { contains: q } }, { description: { contains: q } }] }),
       ...(type && { type }),
       ...(projectId && { projectId }),

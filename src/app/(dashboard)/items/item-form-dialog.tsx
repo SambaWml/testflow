@@ -169,11 +169,6 @@ export function ItemFormDialog({ open, onOpenChange, editId, defaultProjectId }:
             </div>
 
             <div className="col-span-2 space-y-1.5">
-              <Label>Critérios de Aceite</Label>
-              <Textarea {...register("acceptanceCriteria")} placeholder="Liste os critérios de aceite..." rows={3} />
-            </div>
-
-            <div className="col-span-2 space-y-1.5">
               <Label>Observações</Label>
               <Textarea {...register("notes")} placeholder="Observações adicionais..." rows={2} />
             </div>

@@ -6,8 +6,9 @@ const STATUS_LABELS: Record<string, string> = {
   NOT_EXECUTED: "Não Executado", RETEST: "Retest", SKIPPED: "Skipped",
 };
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  const baseUrl = new URL(req.url).origin;
 
   const report = await prisma.report.findUnique({
     where: { id },
@@ -36,7 +37,14 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   const counts = meta.counts ?? {};
 
   // Generate HTML for the PDF (returned as HTML for browser printing)
-  const rows = report.items.map(({ execution: ex }, i: number) => `
+  const rows = report.items.map(({ execution: ex }, i: number) => {
+    const images = ex.evidence.filter((ev: { type: string; storageKey: string | null }) => ev.type === "IMAGE" && ev.storageKey);
+    const imgHtml = images.length > 0
+      ? `<div style="display:flex;flex-direction:column;gap:2px">${images.map((ev: { storageKey: string }, idx: number) =>
+          `<a href="${baseUrl}${ev.storageKey}" style="font-size:11px;color:#2563eb;text-decoration:underline">🖼 Evidência ${idx + 1}</a>`
+        ).join("")}</div>`
+      : "";
+    return `
     <tr style="background:${i % 2 === 0 ? "#f8fafc" : "#fff"}">
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${ex.case.title}</td>
@@ -47,9 +55,10 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
         </span>
       </td>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${ex.relatedBugRef ?? "—"}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${ex.evidence.length}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${imgHtml || (ex.evidence.length > 0 ? `${ex.evidence.length}` : "—")}</td>
     </tr>
-  `).join("");
+  `;
+  }).join("");
 
   const statusRows = Object.entries(counts).map(([s, v]) => `
     <tr>

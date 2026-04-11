@@ -55,10 +55,8 @@ export default function SettingsPage() {
                   <CardTitle>{t.settings.section_system}</CardTitle>
                   <CardDescription>{t.settings.section_system_desc}</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <SettingRow label={t.settings.system_name} defaultValue="TestFlow" settingKey="systemName" />
+                <CardContent>
                   <LangSwitcherRow />
-                  <SettingRow label={t.settings.default_format} defaultValue="BDD" settingKey="defaultCaseFormat" />
                 </CardContent>
               </Card>
 
@@ -191,9 +189,10 @@ function TermsCrud() {
     setTerms(next);
     saveTerms(next);
     setEditKey(null);
+    window.location.reload();
   }
 
-  function reset() { resetTerms(); setTerms(getTerms()); }
+  function reset() { resetTerms(); window.location.reload(); }
 
   return (
     <Card>
@@ -534,121 +533,165 @@ function StatusesCrud() {
   );
 }
 
-interface AIStatus {
-  provider: "ollama" | "openai" | "manus" | "mock";
-  status: "online" | "offline" | "configured" | "mock";
-  url?: string;
-  model?: string;
-  modelAvailable?: boolean;
-  availableModels?: string[];
-  error?: string;
+interface AIConfigData {
+  activeProvider: "openai" | "manus" | "none";
+  openai: { configured: boolean; maskedKey: string; model: string };
+  manus: { configured: boolean; maskedKey: string; baseUrl: string; model: string };
 }
 
 function AIProviderCard() {
-  const { t } = useLang();
-  const { data, isLoading, refetch, isRefetching } = useQuery<AIStatus>({
-    queryKey: ["ai-status"],
-    queryFn: () => fetch("/api/ai-status").then((r) => r.json()),
-    refetchInterval: false,
+  const { data, isLoading, refetch } = useQuery<AIConfigData>({
+    queryKey: ["ai-config"],
+    queryFn: () => fetch("/api/settings/ai").then((r) => r.json()),
   });
+
+  const [provider, setProvider] = useState<"openai" | "manus">("openai");
+  const [openaiKey, setOpenaiKey] = useState("");
+  const [openaiModel, setOpenaiModel] = useState("gpt-4o");
+  const [manusKey, setManusKey] = useState("");
+  const [manusBaseUrl, setManusBaseUrl] = useState("https://api.manus.ai");
+  const [manusModel, setManusModel] = useState("claude-sonnet-4-5");
+  const [saving, setSaving] = useState(false);
+  const [saved, setSaved] = useState(false);
+
+  useEffect(() => {
+    if (!data) return;
+    setProvider(data.activeProvider === "none" ? "openai" : data.activeProvider);
+    setOpenaiModel(data.openai.model || "gpt-4o");
+    setManusBaseUrl(data.manus.baseUrl || "https://api.manus.ai");
+    setManusModel(data.manus.model || "claude-sonnet-4-5");
+  }, [data]);
+
+  async function handleSave() {
+    setSaving(true);
+    await fetch("/api/settings/ai", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        activeProvider: provider,
+        openai: { apiKey: openaiKey, model: openaiModel },
+        manus: { apiKey: manusKey, baseUrl: manusBaseUrl, model: manusModel },
+      }),
+    });
+    setSaving(false);
+    setSaved(true);
+    setOpenaiKey("");
+    setManusKey("");
+    refetch();
+    setTimeout(() => setSaved(false), 2500);
+  }
+
+  const isConfigured = data && data.activeProvider !== "none";
 
   return (
     <Card>
       <CardHeader>
-        <div className="flex items-center justify-between">
-          <div>
-            <CardTitle className="flex items-center gap-2">
-              <Bot className="h-4 w-4" />
-              {t.settings.ai_provider}
-            </CardTitle>
-            <CardDescription>{t.settings.ai_provider_desc}</CardDescription>
-          </div>
-          <Button variant="ghost" size="icon" onClick={() => refetch()} disabled={isRefetching}>
-            <RefreshCw className={`h-4 w-4 ${isRefetching ? "animate-spin" : ""}`} />
-          </Button>
-        </div>
+        <CardTitle className="flex items-center gap-2">
+          <Bot className="h-4 w-4" />
+          Provedor de IA
+        </CardTitle>
+        <CardDescription>Configure a IA usada para gerar casos de teste</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-5">
         {isLoading ? (
           <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            {t.settings.checking_provider}
+            <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
           </div>
-        ) : !data ? null : (
+        ) : (
           <>
-            <div className={`flex items-start gap-3 p-3 rounded-lg border ${
-              data.status === "online" ? "bg-green-50 border-green-200" :
-              data.status === "offline" ? "bg-red-50 border-red-200" :
-              data.status === "configured" ? "bg-blue-50 border-blue-200" :
-              "bg-gray-50 border-gray-200"
-            }`}>
-              {data.status === "online" && <Wifi className="h-4 w-4 text-green-600 mt-0.5 shrink-0" />}
-              {data.status === "offline" && <WifiOff className="h-4 w-4 text-red-600 mt-0.5 shrink-0" />}
-              {data.status === "configured" && <CheckCircle2 className="h-4 w-4 text-blue-600 mt-0.5 shrink-0" />}
-              {data.status === "mock" && <AlertCircle className="h-4 w-4 text-gray-500 mt-0.5 shrink-0" />}
-              <div>
-                <p className="text-sm font-semibold">
-                  {data.provider === "ollama" && `Ollama — ${data.status === "online" ? t.settings.ollama_online.split(" — ")[1] : t.settings.ollama_offline.split(" — ")[1]}`}
-                  {data.provider === "openai" && t.settings.openai_configured}
-                  {data.provider === "manus" && t.settings.manus_configured}
-                  {data.provider === "mock" && t.settings.mock_no_provider}
-                </p>
-                {data.url && <p className="text-xs text-muted-foreground mt-0.5">{data.url}</p>}
-                {data.error && <p className="text-xs text-red-600 mt-1">{data.error}</p>}
-                {data.status === "mock" && (
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {t.settings.configure_mock}
-                  </p>
-                )}
-              </div>
-            </div>
-
-            {data.model && (
-              <div className="flex items-center justify-between text-sm">
-                <span className="text-muted-foreground">{t.settings.active_model}</span>
-                <span className="font-mono font-medium flex items-center gap-2">
-                  {data.model}
-                  {data.modelAvailable === false && (
-                    <Badge variant="destructive" className="text-xs">{t.common.not_installed}</Badge>
-                  )}
-                  {data.modelAvailable === true && (
-                    <Badge variant="success" className="text-xs">{t.common.available}</Badge>
-                  )}
+            {/* Status atual */}
+            {isConfigured && (
+              <div className="flex items-center gap-2 p-2.5 rounded-lg border bg-blue-50 border-blue-200 text-sm">
+                <CheckCircle2 className="h-4 w-4 text-blue-600 shrink-0" />
+                <span className="font-medium text-blue-800">
+                  {data.activeProvider === "openai" ? "OpenAI" : "Manus IA"} configurado
                 </span>
+                {data.activeProvider === "openai" && data.openai.maskedKey && (
+                  <span className="text-xs font-mono text-blue-600 ml-1">{data.openai.maskedKey}</span>
+                )}
+                {data.activeProvider === "manus" && data.manus.maskedKey && (
+                  <span className="text-xs font-mono text-blue-600 ml-1">{data.manus.maskedKey}</span>
+                )}
               </div>
             )}
 
-            {data.availableModels && data.availableModels.length > 0 && (
-              <div className="space-y-1.5">
-                <p className="text-xs font-medium text-muted-foreground">{t.settings.installed_models}</p>
-                <div className="flex flex-wrap gap-1.5">
-                  {data.availableModels.map((m) => (
-                    <span key={m} className="text-xs font-mono bg-slate-100 border px-2 py-0.5 rounded">{m}</span>
-                  ))}
+            {/* Seletor de provedor */}
+            <div className="space-y-1.5">
+              <Label>Provedor</Label>
+              <div className="flex gap-2">
+                {(["openai", "manus"] as const).map((p) => (
+                  <button
+                    key={p}
+                    type="button"
+                    onClick={() => setProvider(p)}
+                    className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium transition-colors ${
+                      provider === p
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-input hover:bg-muted"
+                    }`}
+                  >
+                    {p === "openai" ? "OpenAI" : "Manus IA"}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Campos OpenAI */}
+            {provider === "openai" && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>API Key</Label>
+                  <Input
+                    type="password"
+                    placeholder={data?.openai.configured ? data.openai.maskedKey : "sk-..."}
+                    value={openaiKey}
+                    onChange={(e) => setOpenaiKey(e.target.value)}
+                  />
+                  {data?.openai.configured && !openaiKey && (
+                    <p className="text-xs text-muted-foreground">Deixe em branco para manter a chave atual</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Modelo</Label>
+                  <Input value={openaiModel} onChange={(e) => setOpenaiModel(e.target.value)} placeholder="gpt-4o" />
                 </div>
               </div>
             )}
 
-            <div className="rounded-md bg-slate-50 border p-3 text-xs space-y-2">
-              <p className="font-semibold text-slate-700">Como configurar (.env.local)</p>
-              <div className="space-y-1">
-                <p className="font-medium">Ollama (local, gratuito):</p>
-                <code className="block bg-slate-800 text-green-400 p-2 rounded text-xs">
-                  OLLAMA_URL=&quot;http://localhost:11434&quot;<br/>
-                  OLLAMA_MODEL=&quot;llama3.2&quot;
-                </code>
+            {/* Campos Manus */}
+            {provider === "manus" && (
+              <div className="space-y-3">
+                <div className="space-y-1.5">
+                  <Label>API Key</Label>
+                  <Input
+                    type="password"
+                    placeholder={data?.manus.configured ? data.manus.maskedKey : "Sua chave Manus..."}
+                    value={manusKey}
+                    onChange={(e) => setManusKey(e.target.value)}
+                  />
+                  {data?.manus.configured && !manusKey && (
+                    <p className="text-xs text-muted-foreground">Deixe em branco para manter a chave atual</p>
+                  )}
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Base URL</Label>
+                  <Input value={manusBaseUrl} onChange={(e) => setManusBaseUrl(e.target.value)} placeholder="https://api.manus.ai" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Modelo</Label>
+                  <Input value={manusModel} onChange={(e) => setManusModel(e.target.value)} placeholder="claude-sonnet-4-5" />
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="font-medium">OpenAI (nuvem):</p>
-                <code className="block bg-slate-800 text-green-400 p-2 rounded text-xs">
-                  OPENAI_API_KEY=&quot;sk-...&quot;<br/>
-                  OPENAI_MODEL=&quot;gpt-4o&quot;
-                </code>
-              </div>
-              <p className="text-muted-foreground">
-                Reinicie o servidor após alterar.
-              </p>
-            </div>
+            )}
+
+            <Button onClick={handleSave} disabled={saving} className="w-full">
+              {saving
+                ? <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Salvando...</>
+                : saved
+                  ? <><CheckCircle2 className="h-4 w-4 mr-2" /> Salvo!</>
+                  : "Salvar configuração"
+              }
+            </Button>
           </>
         )}
       </CardContent>
