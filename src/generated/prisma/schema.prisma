@@ -1,0 +1,299 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String?
+  role         String   @default("TESTER")
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  accounts   Account[]
+  sessions   Session[]
+  items      Item[]
+  cases      TestCase[]
+  executions Execution[]
+  testPlans  TestPlan[]
+  reports    Report[]
+
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Project {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  slug        String   @unique
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  modules    Module[]
+  items      Item[]
+  cases      TestCase[]
+  executions Execution[]
+  testPlans  TestPlan[]
+  reports    Report[]
+
+  @@map("projects")
+}
+
+model Module {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  projectId   String
+  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+
+  items Item[]
+  cases TestCase[]
+
+  @@unique([projectId, name])
+  @@map("modules")
+}
+
+model Item {
+  id                 String   @id @default(cuid())
+  title              String
+  description        String?
+  type               String   @default("USER_STORY")
+  priority           String   @default("MEDIUM")
+  status             String   @default("OPEN")
+  projectId          String
+  project            Project  @relation(fields: [projectId], references: [id])
+  moduleId           String?
+  module             Module?  @relation(fields: [moduleId], references: [id])
+  reference          String?
+  acceptanceCriteria String?
+  notes              String?
+  authorId           String
+  author             User     @relation(fields: [authorId], references: [id])
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  cases TestCase[]
+
+  @@map("items")
+}
+
+model TestCase {
+  id           String   @id @default(cuid())
+  title        String
+  format       String   @default("BDD")
+  precondition String?
+  priority     String   @default("MEDIUM")
+  reference    String?
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id])
+  moduleId     String?
+  module       Module?  @relation(fields: [moduleId], references: [id])
+  itemId       String?
+  item         Item?    @relation(fields: [itemId], references: [id])
+  authorId     String
+  author       User     @relation(fields: [authorId], references: [id])
+  tags         String   @default("[]")
+  isAutomated  Boolean  @default(false)
+  version      Int      @default(1)
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  bddGiven       String?
+  bddWhen        String?
+  bddThen        String?
+  expectedResult String?
+  notes          String?
+
+  steps         TestStep[]
+  executions    Execution[]
+  testPlanCases TestPlanCase[]
+
+  @@map("test_cases")
+}
+
+model TestStep {
+  id           String   @id @default(cuid())
+  caseId       String
+  case         TestCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
+  order        Int
+  description  String
+  expectedData String?
+
+  @@unique([caseId, order])
+  @@map("test_steps")
+}
+
+model Execution {
+  id            String    @id @default(cuid())
+  caseId        String
+  case          TestCase  @relation(fields: [caseId], references: [id])
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id])
+  executorId    String
+  executor      User      @relation(fields: [executorId], references: [id])
+  testPlanId    String?
+  testPlan      TestPlan? @relation(fields: [testPlanId], references: [id])
+  status        String    @default("NOT_EXECUTED")
+  executedAt    DateTime?
+  environment   String    @default("")
+  buildVersion  String?
+  notes         String?
+  relatedBugRef String?
+  duration      Int?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  evidence    Evidence[]
+  reportItems ReportItem[]
+
+  @@map("executions")
+}
+
+model TestPlan {
+  id           String    @id @default(cuid())
+  name         String
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id])
+  creatorId    String
+  creator      User      @relation(fields: [creatorId], references: [id])
+  status       String    @default("PENDING")
+  result       String?
+  environment  String    @default("")
+  buildVersion String?
+  notes        String?
+  startedAt    DateTime?
+  completedAt  DateTime?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  items      TestPlanCase[]
+  executions Execution[]
+
+  @@map("test_plans")
+}
+
+model TestPlanCase {
+  id         String   @id @default(cuid())
+  testPlanId String
+  testPlan   TestPlan @relation(fields: [testPlanId], references: [id], onDelete: Cascade)
+  caseId     String
+  case       TestCase @relation(fields: [caseId], references: [id])
+  order      Int
+
+  @@unique([testPlanId, caseId])
+  @@map("test_plan_cases")
+}
+
+model Evidence {
+  id          String    @id @default(cuid())
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id], onDelete: Cascade)
+  type        String
+  fileName    String
+  fileSize    Int?
+  mimeType    String?
+  storageKey  String
+  publicUrl   String?
+  linkUrl     String?
+  description String?
+  uploadedAt  DateTime  @default(now())
+
+  @@map("evidence")
+}
+
+model Report {
+  id           String    @id @default(cuid())
+  title        String
+  projectId    String
+  project      Project   @relation(fields: [projectId], references: [id])
+  authorId     String
+  author       User      @relation(fields: [authorId], references: [id])
+  environment  String?
+  buildVersion String?
+  dateFrom     DateTime?
+  dateTo       DateTime?
+  notes        String?
+  pdfUrl       String?
+  generatedAt  DateTime  @default(now())
+  metadata     String    @default("{}")
+
+  items ReportItem[]
+
+  @@map("reports")
+}
+
+model ReportItem {
+  id          String    @id @default(cuid())
+  reportId    String
+  report      Report    @relation(fields: [reportId], references: [id], onDelete: Cascade)
+  executionId String
+  execution   Execution @relation(fields: [executionId], references: [id])
+  order       Int
+
+  @@unique([reportId, executionId])
+  @@map("report_items")
+}
+
+model Setting {
+  id        String   @id @default(cuid())
+  key       String   @unique
+  value     String   @default("[]")
+  updatedAt DateTime @updatedAt
+
+  @@map("settings")
+}
+
+model GenerationLog {
+  id            String   @id @default(cuid())
+  itemId        String?
+  prompt        String
+  modelUsed     String   @default("gpt-4o")
+  tokensUsed    Int?
+  casesCount    Int
+  format        String
+  language      String
+  coverageLevel String
+  testType      String
+  createdAt     DateTime @default(now())
+
+  @@map("generation_logs")
+}
