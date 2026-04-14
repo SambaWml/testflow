@@ -38,12 +38,24 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
 
   // Generate HTML for the PDF (returned as HTML for browser printing)
   const rows = report.items.map(({ execution: ex }, i: number) => {
-    const images = ex.evidence.filter((ev: { type: string; storageKey: string | null }) => ev.type === "IMAGE" && ev.storageKey);
-    const imgHtml = images.length > 0
-      ? `<div style="display:flex;flex-direction:column;gap:2px">${images.map((ev: { storageKey: string }, idx: number) =>
-          `<a href="${baseUrl}${ev.storageKey}" style="font-size:11px;color:#2563eb;text-decoration:underline">🖼 Evidência ${idx + 1}</a>`
-        ).join("")}</div>`
-      : "";
+    type EvidenceItem = { type: string; storageKey: string | null; linkUrl: string | null; fileName: string };
+    const evidenceLinks = ex.evidence.map((ev: EvidenceItem, idx: number) => {
+      if (ev.type === "IMAGE" && ev.storageKey) {
+        return `<a href="${baseUrl}${ev.storageKey}" style="font-size:11px;color:#2563eb;text-decoration:underline;display:block">🖼 Imagem ${idx + 1}</a>`;
+      }
+      if (ev.type === "LINK" && ev.linkUrl) {
+        return `<a href="${ev.linkUrl}" style="font-size:11px;color:#2563eb;text-decoration:underline;display:block">🔗 Link ${idx + 1}</a>`;
+      }
+      if (ev.storageKey) {
+        return `<a href="${baseUrl}${ev.storageKey}" style="font-size:11px;color:#2563eb;text-decoration:underline;display:block">📎 ${ev.fileName || `Evidência ${idx + 1}`}</a>`;
+      }
+      return "";
+    }).filter(Boolean).join("");
+
+    const evidenceCell = evidenceLinks
+      ? `<div style="display:flex;flex-direction:column;gap:2px">${evidenceLinks}</div>`
+      : "—";
+
     return `
     <tr style="background:${i % 2 === 0 ? "#f8fafc" : "#fff"}">
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${i + 1}</td>
@@ -55,7 +67,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
         </span>
       </td>
       <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${ex.relatedBugRef ?? "—"}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${imgHtml || (ex.evidence.length > 0 ? `${ex.evidence.length}` : "—")}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #e2e8f0">${evidenceCell}</td>
     </tr>
   `;
   }).join("");

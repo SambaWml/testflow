@@ -1,12 +1,37 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { sessionUser, getProjectsForUser } from "@/lib/permissions";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const u = sessionUser(session.user);
+
+  // Filter by org — only show data belonging to the user's organization
+  const orgFilter = u.orgId ? { organizationId: u.orgId } : {};
+
+  // OWNER/ADMIN see all org projects (null = no filter); MEMBER sees only linked projects
+  const projectIdsRaw = u.orgId
+    ? await getProjectsForUser(u.id, u.orgId, u.orgRole ?? "MEMBER")
+    : [];
+
+  let projectFilter: object;
+  if (projectIdsRaw === null) {
+    // OWNER/ADMIN — no project restriction, just scope to org
+    projectFilter = {};
+  } else {
+    projectFilter = { projectId: { in: projectIdsRaw } };
+  }
+
+  const baseFilter = { ...orgFilter, ...projectFilter };
+
   const [itemCount, caseCount, executionCount, recentPlans, recentReports] = await Promise.all([
-    prisma.item.count(),
-    prisma.testCase.count({ where: { isActive: true } }),
-    prisma.execution.count(),
+    prisma.item.count({ where: baseFilter }),
+    prisma.testCase.count({ where: { isActive: true, ...baseFilter } }),
+    prisma.execution.count({ where: baseFilter }),
     prisma.testPlan.findMany({
+      where: baseFilter,
       orderBy: { createdAt: "desc" },
       take: 5,
       select: {
@@ -23,14 +48,14 @@ export async function GET() {
       },
     }),
     prisma.report.findMany({
+      where: { ...orgFilter, ...projectFilter },
       orderBy: { generatedAt: "desc" },
       take: 5,
       select: { id: true, title: true, environment: true, generatedAt: true, metadata: true },
     }),
   ]);
 
-  // status distribution from all executions
-  const allExec = await prisma.execution.findMany({ select: { status: true } });
+  const allExec = await prisma.execution.findMany({ where: baseFilter, select: { status: true } });
   const statusCounts: Record<string, number> = {};
   allExec.forEach((ex) => { statusCounts[ex.status] = (statusCounts[ex.status] ?? 0) + 1; });
 
@@ -40,7 +65,6 @@ export async function GET() {
 
   const statusDistribution = Object.entries(statusCounts).map(([name, value]) => ({ name, value }));
 
-  // Compute pass rate per plan
   const recentPlansWithRate = recentPlans.map((plan) => {
     const total = plan.executions.length;
     const planPass = plan.executions.filter((e) => e.status === "PASS").length;

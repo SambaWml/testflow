@@ -10,7 +10,29 @@ async function main() {
   console.log("🌱 Seeding database...");
 
   const passwordHash = await bcrypt.hash("admin123", 10);
-  const user = await prisma.user.upsert({
+
+  // Super Admin (platform owner — no org needed)
+  const superAdmin = await prisma.user.upsert({
+    where: { email: "superadmin@testflow.com" },
+    update: { isSuperAdmin: true },
+    create: {
+      name: "Super Admin",
+      email: "superadmin@testflow.com",
+      passwordHash,
+      role: "ADMIN",
+      isSuperAdmin: true,
+    },
+  });
+
+  // Demo organization
+  const org = await prisma.organization.upsert({
+    where: { slug: "demo-org" },
+    update: {},
+    create: { name: "Demo Org", slug: "demo-org", plan: "PRO", isActive: true, code: 1001 },
+  });
+
+  // Org owner / demo user
+  const adminUser = await prisma.user.upsert({
     where: { email: "admin@testflow.com" },
     update: {},
     create: {
@@ -22,6 +44,13 @@ async function main() {
     },
   });
 
+  await prisma.orgMember.upsert({
+    where: { organizationId_userId: { organizationId: org.id, userId: adminUser.id } },
+    update: {},
+    create: { organizationId: org.id, userId: adminUser.id, role: "OWNER", joinedAt: new Date() },
+  });
+
+  // Demo project inside the org
   const project = await prisma.project.upsert({
     where: { slug: "demo-project" },
     update: {},
@@ -29,6 +58,7 @@ async function main() {
       name: "Projeto Demo",
       description: "Projeto de demonstração do TestFlow",
       slug: "demo-project",
+      organizationId: org.id,
     },
   });
 
@@ -53,10 +83,11 @@ async function main() {
       priority: "HIGH",
       projectId: project.id,
       moduleId: module.id,
+      organizationId: org.id,
       reference: "US-001",
       acceptanceCriteria:
         "1. O usuário deve conseguir logar com credenciais válidas\n2. Deve exibir erro para credenciais inválidas\n3. Deve redirecionar para o dashboard após login bem-sucedido",
-      authorId: user.id,
+      authorId: adminUser.id,
     },
   });
 
@@ -72,7 +103,8 @@ async function main() {
       projectId: project.id,
       moduleId: module.id,
       itemId: item.id,
-      authorId: user.id,
+      organizationId: org.id,
+      authorId: adminUser.id,
       bddGiven: "O usuário está na tela de login",
       bddWhen: "O usuário informa email 'admin@testflow.com' e senha 'admin123' e clica em Entrar",
       bddThen: "O sistema deve redirecionar para o Dashboard",
@@ -91,7 +123,8 @@ async function main() {
       projectId: project.id,
       moduleId: module.id,
       itemId: item.id,
-      authorId: user.id,
+      organizationId: org.id,
+      authorId: adminUser.id,
       bddGiven: "O usuário está na tela de login",
       bddWhen: "O usuário informa email válido e senha incorreta",
       bddThen: "O sistema deve exibir a mensagem 'Email ou senha inválidos'",
@@ -110,7 +143,8 @@ async function main() {
       projectId: project.id,
       moduleId: module.id,
       itemId: item.id,
-      authorId: user.id,
+      organizationId: org.id,
+      authorId: adminUser.id,
       expectedResult: "Usuário autenticado e redirecionado ao Dashboard",
     },
   });
@@ -134,7 +168,8 @@ async function main() {
       id: "demo-exec-1",
       caseId: case1.id,
       projectId: project.id,
-      executorId: user.id,
+      organizationId: org.id,
+      executorId: adminUser.id,
       status: "PASS",
       environment: "QA",
       buildVersion: "v1.0.0",
@@ -149,7 +184,8 @@ async function main() {
       id: "demo-exec-2",
       caseId: case3.id,
       projectId: project.id,
-      executorId: user.id,
+      organizationId: org.id,
+      executorId: adminUser.id,
       status: "FAIL",
       environment: "QA",
       buildVersion: "v1.0.0",
@@ -160,7 +196,12 @@ async function main() {
   });
 
   console.log("✅ Seed concluído!");
-  console.log("📧 Login: admin@testflow.com / admin123");
+  console.log("");
+  console.log("🔑 Contas criadas:");
+  console.log("   Super Admin  → superadmin@testflow.com / admin123");
+  console.log("   Org Owner    → admin@testflow.com       / admin123  (org: Demo Org)");
+  console.log("");
+  console.log(`   superAdmin id: ${superAdmin.id}`);
 }
 
 main()

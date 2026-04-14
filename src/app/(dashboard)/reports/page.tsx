@@ -42,7 +42,7 @@ function buildMarkdown(
       execution: {
         status: string; notes: string | null; relatedBugRef: string | null;
         executor: { name: string }; executedAt: string | null;
-        evidence: { type: string; storageKey: string | null }[];
+        evidence: { type: string; storageKey: string | null; linkUrl: string | null }[];
         case: {
           title: string; format: string; precondition: string | null; priority: string;
           bddGiven: string | null; bddWhen: string | null; bddThen: string | null;
@@ -124,13 +124,20 @@ function buildMarkdown(
       lines.push(``);
     }
 
-    const images = (ex.evidence ?? []).filter((ev) => ev.type === "IMAGE" && ev.storageKey);
-    if (images.length > 0) {
+    const allEvidence = ex.evidence ?? [];
+    if (allEvidence.length > 0) {
       const origin = typeof window !== "undefined" ? window.location.origin : "";
       lines.push(`**Evidências:**`);
       lines.push(``);
-      images.forEach((ev, idx) => {
-        lines.push(`![Evidência ${idx + 1}](${origin}${ev.storageKey})`);
+      allEvidence.forEach((ev, idx) => {
+        const label = `Evidência ${idx + 1}`;
+        if (ev.type === "IMAGE" && ev.storageKey) {
+          lines.push(`- [${label} (imagem)](${origin}${ev.storageKey})`);
+        } else if (ev.type === "LINK" && ev.linkUrl) {
+          lines.push(`- [${label} (link)](${ev.linkUrl})`);
+        } else if (ev.storageKey) {
+          lines.push(`- [${label}](${origin}${ev.storageKey})`);
+        }
       });
       lines.push(``);
     }

@@ -4,8 +4,69 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
+
+
+// ─── Multi-tenancy ───────────────────────────────────────────────────────────
+
+model Organization {
+  id        String   @id @default(cuid())
+  code      Int      @unique
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  plan      String   @default("FREE")
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  roleNames           String  @default("{\"OWNER\":\"Owner\",\"ADMIN\":\"Admin\",\"MEMBER\":\"Membro\"}")
+  overviewEnabled     Boolean @default(true)
+  qaDashboardEnabled  Boolean @default(true)
+  qaDashboardName     String  @default("Dashboard QA")
+
+  members    OrgMember[]
+  projects   Project[]
+  items      Item[]
+  cases      TestCase[]
+  testPlans  TestPlan[]
+  executions Execution[]
+  reports    Report[]
+
+  @@map("organizations")
+}
+
+model OrgMember {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role           String       @default("MEMBER")
+  status         String       @default("ACTIVE")
+  skills         String       @default("[]")
+  invitedAt      DateTime     @default(now())
+  joinedAt       DateTime?
+
+  @@unique([organizationId, userId])
+  @@map("org_members")
+}
+
+model ProjectMember {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role      String   @default("VIEWER")
+  createdAt DateTime @default(now())
+
+  @@unique([projectId, userId])
+  @@map("project_members")
+}
+
+// ─── Users ───────────────────────────────────────────────────────────────────
 
 model User {
   id           String   @id @default(cuid())
@@ -13,17 +74,20 @@ model User {
   email        String   @unique
   passwordHash String?
   role         String   @default("TESTER")
+  isSuperAdmin Boolean  @default(false)
   avatarUrl    String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  accounts     Account[]
-  sessions     Session[]
-  items        Item[]
-  cases        TestCase[]
-  executions   Execution[]
-  testPlans    TestPlan[]
-  reports      Report[]
+  accounts       Account[]
+  sessions       Session[]
+  items          Item[]
+  cases          TestCase[]
+  executions     Execution[]
+  testPlans      TestPlan[]
+  reports        Report[]
+  orgMembers     OrgMember[]
+  projectMembers ProjectMember[]
 
   @@map("users")
 }
@@ -57,21 +121,26 @@ model Session {
   @@map("sessions")
 }
 
-model Project {
-  id          String   @id @default(cuid())
-  name        String
-  description String?
-  slug        String   @unique
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+// ─── Core entities ───────────────────────────────────────────────────────────
 
-  modules     Module[]
-  items       Item[]
-  cases       TestCase[]
-  executions  Execution[]
-  testPlans   TestPlan[]
-  reports     Report[]
+model Project {
+  id             String   @id @default(cuid())
+  name           String
+  description    String?
+  slug           String   @unique
+  isActive       Boolean  @default(true)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  modules        Module[]
+  items          Item[]
+  cases          TestCase[]
+  executions     Execution[]
+  testPlans      TestPlan[]
+  reports        Report[]
+  projectMembers ProjectMember[]
 
   @@map("projects")
 }
@@ -100,6 +169,8 @@ model Item {
   status             String   @default("OPEN")
   projectId          String
   project            Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId     String?
+  organization       Organization? @relation(fields: [organizationId], references: [id])
   moduleId           String?
   module             Module?  @relation(fields: [moduleId], references: [id])
   reference          String?
@@ -124,6 +195,8 @@ model TestCase {
   reference      String?
   projectId      String
   project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
   moduleId       String?
   module         Module?  @relation(fields: [moduleId], references: [id])
   itemId         String?
@@ -163,24 +236,26 @@ model TestStep {
 }
 
 model Execution {
-  id            String    @id @default(cuid())
-  caseId        String
-  case          TestCase  @relation(fields: [caseId], references: [id])
-  projectId     String
-  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  executorId    String
-  executor      User      @relation(fields: [executorId], references: [id])
-  testPlanId    String?
-  testPlan      TestPlan? @relation(fields: [testPlanId], references: [id])
-  status        String    @default("NOT_EXECUTED")
-  executedAt    DateTime?
-  environment   String    @default("")
-  buildVersion  String?
-  notes         String?
-  relatedBugRef String?
-  duration      Int?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  caseId         String
+  case           TestCase  @relation(fields: [caseId], references: [id])
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  executorId     String
+  executor       User      @relation(fields: [executorId], references: [id])
+  testPlanId     String?
+  testPlan       TestPlan? @relation(fields: [testPlanId], references: [id])
+  status         String    @default("NOT_EXECUTED")
+  executedAt     DateTime?
+  environment    String    @default("")
+  buildVersion   String?
+  notes          String?
+  relatedBugRef  String?
+  duration       Int?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
   evidence      Evidence[]
   reportItems   ReportItem[]
@@ -189,24 +264,26 @@ model Execution {
 }
 
 model TestPlan {
-  id           String    @id @default(cuid())
-  name         String
-  projectId    String
-  project      Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  creatorId    String
-  creator      User      @relation(fields: [creatorId], references: [id])
-  status       String    @default("PENDING")
-  result       String?
-  environment  String    @default("")
-  buildVersion String?
-  notes        String?
-  startedAt    DateTime?
-  completedAt  DateTime?
-  createdAt    DateTime  @default(now())
-  updatedAt    DateTime  @updatedAt
+  id             String    @id @default(cuid())
+  name           String
+  projectId      String
+  project        Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  creatorId      String
+  creator        User      @relation(fields: [creatorId], references: [id])
+  status         String    @default("PENDING")
+  result         String?
+  environment    String    @default("")
+  buildVersion   String?
+  notes          String?
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
 
-  items        TestPlanCase[]
-  executions   Execution[]
+  items          TestPlanCase[]
+  executions     Execution[]
 
   @@map("test_plans")
 }
@@ -241,22 +318,24 @@ model Evidence {
 }
 
 model Report {
-  id            String   @id @default(cuid())
-  title         String
-  projectId     String
-  project       Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  authorId      String
-  author        User     @relation(fields: [authorId], references: [id])
-  environment   String?
-  buildVersion  String?
-  dateFrom      DateTime?
-  dateTo        DateTime?
-  notes         String?
-  pdfUrl        String?
-  generatedAt   DateTime @default(now())
-  metadata      String   @default("{}")
+  id             String   @id @default(cuid())
+  title          String
+  projectId      String
+  project        Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  organizationId String?
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  authorId       String
+  author         User     @relation(fields: [authorId], references: [id])
+  environment    String?
+  buildVersion   String?
+  dateFrom       DateTime?
+  dateTo         DateTime?
+  notes          String?
+  pdfUrl         String?
+  generatedAt    DateTime @default(now())
+  metadata       String   @default("{}")
 
-  items         ReportItem[]
+  items          ReportItem[]
 
   @@map("reports")
 }

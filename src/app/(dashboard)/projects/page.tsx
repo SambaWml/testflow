@@ -12,10 +12,11 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+// Note: Dialog/Label kept for ItemFormDialog dependency chain
 import {
   Plus, Search, Wand2, Pencil, Trash2, ChevronDown, ChevronUp,
-  FolderOpen, Folder, FileText, Bug, Zap, BookOpen, GitBranch, CheckSquare, Loader2,
-  AlertTriangle, TestTube2, PowerOff, Power,
+  FolderOpen, Folder, FileText, Bug, Zap, BookOpen, GitBranch, CheckSquare,
+  TestTube2, FolderCog,
 } from "lucide-react";
 import { getItemTypes, getPriorities } from "@/lib/enum-config";
 
@@ -50,74 +51,15 @@ export default function ProjectsPage() {
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
   const [defaultProjectId, setDefaultProjectId] = useState<string | undefined>();
-  const [projectDialog, setProjectDialog] = useState(false);
-  const [projName, setProjName] = useState("");
-  const [projDesc, setProjDesc] = useState("");
-  const [editingProject, setEditingProject] = useState<{ id: string; name: string; description: string | null } | null>(null);
-  const [deletingProject, setDeletingProject] = useState<{
-    id: string; name: string;
-    _count: { items: number; cases: number; testPlans: number; executions: number; reports: number };
-  } | null>(null);
-  const [togglingProject, setTogglingProject] = useState<{
-    id: string; name: string; isActive: boolean;
-    _count: { items: number; cases: number; testPlans: number; executions: number; reports: number };
-  } | null>(null);
 
   const { data: projectsData, isLoading: loadingProjects } = useQuery({
     queryKey: ["projects"],
     queryFn: () => fetch("/api/projects").then((r) => r.json()),
   });
 
-  const createProject = useMutation({
-    mutationFn: (data: { name: string; description: string }) =>
-      fetch("/api/projects", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      }).then((r) => r.json()),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      setProjectDialog(false);
-      setProjName(""); setProjDesc("");
-      setEditingProject(null);
-    },
-  });
-
-  const [deleteError, setDeleteError] = useState<string | null>(null);
-
-  const deleteProject = useMutation({
-    mutationFn: async (id: string) => {
-      const res = await fetch(`/api/projects/${id}`, { method: "DELETE" });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error ?? "error");
-      return json;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      setDeletingProject(null);
-      setDeleteError(null);
-    },
-    onError: (err: Error) => {
-      setDeleteError(err.message);
-    },
-  });
-
   const deleteItem = useMutation({
     mutationFn: (id: string) => fetch(`/api/items/${id}`, { method: "DELETE" }),
     onSuccess: () => qc.invalidateQueries({ queryKey: ["items"] }),
-  });
-
-  const toggleActiveMutation = useMutation({
-    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
-      fetch(`/api/projects/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ isActive }),
-      }),
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["projects"] });
-      setTogglingProject(null);
-    },
   });
 
   const projects = (projectsData?.projects ?? []) as {
@@ -149,29 +91,9 @@ export default function ProjectsPage() {
     setItemDialogOpen(true);
   }
 
-  function openProjectDialog(proj?: { id: string; name: string; description: string | null }) {
-    if (proj) {
-      setEditingProject(proj);
-      setProjName(proj.name);
-      setProjDesc(proj.description ?? "");
-    } else {
-      setEditingProject(null);
-      setProjName(""); setProjDesc("");
-    }
-    setProjectDialog(true);
-  }
-
   return (
     <div className="flex flex-col h-full">
-      <Topbar
-        title={terms.projeto.plural}
-        subtitle={t.projects.subtitle}
-        actions={
-          <Button size="sm" onClick={() => openProjectDialog()}>
-            <Plus className="h-4 w-4" /> {t.common.new} {terms.projeto.singular}
-          </Button>
-        }
-      />
+      <Topbar title={terms.projeto.plural} subtitle={t.projects.subtitle} />
 
       <div className="flex-1 overflow-y-auto p-6 space-y-4">
         {/* Search */}
@@ -200,9 +122,13 @@ export default function ProjectsPage() {
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <FolderOpen className="h-12 w-12 text-muted-foreground mb-4" />
               <h3 className="text-lg font-medium mb-1">{t.projects.no_projects_title}</h3>
-              <p className="text-sm text-muted-foreground mb-4">{t.projects.no_projects_desc}</p>
-              <Button onClick={() => openProjectDialog()}>
-                <Plus className="h-4 w-4" /> {t.projects.create_project}
+              <p className="text-sm text-muted-foreground mb-4">
+                Crie projetos em <strong>Configurações → Projetos</strong>.
+              </p>
+              <Button variant="outline" size="sm" asChild>
+                <Link href="/settings/projects">
+                  <FolderCog className="h-4 w-4 mr-1" /> Ir para Configurações de Projetos
+                </Link>
               </Button>
             </CardContent>
           </Card>
@@ -221,9 +147,6 @@ export default function ProjectsPage() {
                   onNewItem={() => openNewItem(project.id)}
                   onEditItem={openEditItem}
                   onDeleteItem={(id) => { if (confirm(t.projects.confirm_delete_item)) deleteItem.mutate(id); }}
-                  onEditProject={() => openProjectDialog(project)}
-                  onDeleteProject={() => setDeletingProject(project)}
-                  onToggleProject={() => setTogglingProject(project)}
                   lang={lang}
                 />
               );
@@ -231,128 +154,6 @@ export default function ProjectsPage() {
           </div>
         )}
       </div>
-
-      {/* Delete project confirmation dialog */}
-      <Dialog open={!!deletingProject} onOpenChange={(o) => { if (!o) { setDeletingProject(null); setDeleteError(null); } }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-red-700">
-              <AlertTriangle className="h-5 w-5" />
-              {t.projects.confirm_delete_project}
-            </DialogTitle>
-          </DialogHeader>
-          {deletingProject && (() => {
-            const c = deletingProject._count;
-            const total = c.items + c.cases + c.testPlans + c.executions + c.reports;
-            const rows = [
-              { label: terms.item.plural, count: c.items },
-              { label: terms.casoDeTeste.plural, count: c.cases },
-              { label: terms.planoDeTeste.plural, count: c.testPlans },
-              { label: terms.execucao.plural, count: c.executions },
-              { label: terms.relatorio.plural, count: c.reports },
-            ].filter((r) => r.count > 0);
-            return (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {t.projects.delete_warning_prefix}{" "}
-                  <span className="font-semibold text-foreground">"{deletingProject.name}"</span>{" "}
-                  {t.projects.delete_warning_suffix}
-                </p>
-                {rows.length > 0 && (
-                  <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-1.5">
-                    {rows.map(({ label, count }) => (
-                      <div key={label} className="flex items-center justify-between text-sm">
-                        <span className="text-red-700">{label}</span>
-                        <span className="font-semibold text-red-800">{count}</span>
-                      </div>
-                    ))}
-                    <div className="border-t border-red-200 pt-1.5 flex items-center justify-between text-sm font-semibold">
-                      <span className="text-red-800">{t.projects.delete_total}</span>
-                      <span className="text-red-900">{total}</span>
-                    </div>
-                  </div>
-                )}
-                <p className="text-xs text-muted-foreground">{t.projects.delete_irreversible}</p>
-              </div>
-            );
-          })()}
-          {deleteError === "has_items" && (
-            <div className="rounded-lg border border-orange-200 bg-orange-50 px-3 py-2 flex items-start gap-2">
-              <AlertTriangle className="h-4 w-4 text-orange-600 shrink-0 mt-0.5" />
-              <p className="text-sm text-orange-800">{t.projects.delete_blocked_items}</p>
-            </div>
-          )}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeletingProject(null); setDeleteError(null); }}>{t.common.cancel}</Button>
-            <Button
-              variant="destructive"
-              disabled={deleteProject.isPending || deleteError === "has_items"}
-              onClick={() => { if (deletingProject) deleteProject.mutate(deletingProject.id); }}
-            >
-              {deleteProject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-              {t.common.yes_delete}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Toggle project active/inactive dialog */}
-      <Dialog open={!!togglingProject} onOpenChange={(o) => { if (!o) setTogglingProject(null); }}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle className={`flex items-center gap-2 ${togglingProject?.isActive ? "text-amber-700" : "text-green-700"}`}>
-              {togglingProject?.isActive ? <PowerOff className="h-5 w-5" /> : <Power className="h-5 w-5" />}
-              {togglingProject?.isActive ? t.projects.deactivate_title : t.projects.activate_title}
-            </DialogTitle>
-          </DialogHeader>
-          {togglingProject && (() => {
-            const c = togglingProject._count;
-            const deactivating = togglingProject.isActive;
-            const rows = [
-              { label: terms.item.plural, count: c.items },
-              { label: terms.casoDeTeste.plural, count: c.cases },
-              { label: terms.planoDeTeste.plural, count: c.testPlans },
-              { label: terms.execucao.plural, count: c.executions },
-              { label: terms.relatorio.plural, count: c.reports },
-            ].filter((r) => r.count > 0);
-            return (
-              <div className="space-y-4">
-                <p className="text-sm text-muted-foreground">
-                  {deactivating ? t.projects.deactivate_warning_prefix : t.projects.activate_warning_prefix}{" "}
-                  <span className="font-semibold text-foreground">"{togglingProject.name}"</span>.
-                </p>
-                {deactivating && rows.length > 0 && (
-                  <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-1.5">
-                    <p className="text-xs font-semibold text-amber-800 mb-2">{t.projects.deactivate_affected}</p>
-                    {rows.map(({ label, count }) => (
-                      <div key={label} className="flex items-center justify-between text-sm">
-                        <span className="text-amber-700">{label}</span>
-                        <span className="font-semibold text-amber-800">{count}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {deactivating && (
-                  <p className="text-xs text-muted-foreground">{t.projects.deactivate_note}</p>
-                )}
-              </div>
-            );
-          })()}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setTogglingProject(null)}>{t.common.cancel}</Button>
-            <Button
-              variant={togglingProject?.isActive ? "secondary" : "default"}
-              disabled={toggleActiveMutation.isPending}
-              onClick={() => {
-                if (togglingProject) toggleActiveMutation.mutate({ id: togglingProject.id, isActive: !togglingProject.isActive });
-              }}
-            >
-              {toggleActiveMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : togglingProject?.isActive ? <PowerOff className="h-4 w-4" /> : <Power className="h-4 w-4" />}
-              {togglingProject?.isActive ? t.projects.confirm_deactivate : t.projects.confirm_activate}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
 
       {/* Item form dialog */}
       <ItemFormDialog
@@ -362,41 +163,13 @@ export default function ProjectsPage() {
         defaultProjectId={defaultProjectId}
       />
 
-      {/* Project create/edit dialog */}
-      <Dialog open={projectDialog} onOpenChange={(o) => { setProjectDialog(o); if (!o) { setEditingProject(null); setProjName(""); setProjDesc(""); } }}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{editingProject ? `${t.common.edit} ${terms.projeto.singular}` : t.projects.create_project}</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-1.5">
-              <Label>{t.projects.project_name_label} *</Label>
-              <Input placeholder={t.projects.project_name_placeholder} value={projName} onChange={(e) => setProjName(e.target.value)} />
-            </div>
-            <div className="space-y-1.5">
-              <Label>{t.projects.project_desc_label}</Label>
-              <Input placeholder={t.projects.project_desc_placeholder} value={projDesc} onChange={(e) => setProjDesc(e.target.value)} />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setProjectDialog(false)}>{t.common.cancel}</Button>
-            <Button
-              disabled={!projName || createProject.isPending}
-              onClick={() => createProject.mutate({ name: projName, description: projDesc })}
-            >
-              {createProject.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-              {editingProject ? t.common.save : t.common.create}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
 
 function ProjectCard({
   project, expanded, typeFilter,
-  onToggle, onTypeFilter, onNewItem, onEditItem, onDeleteItem, onEditProject, onDeleteProject, onToggleProject, lang,
+  onToggle, onTypeFilter, onNewItem, onEditItem, onDeleteItem, lang,
 }: {
   project: { id: string; name: string; description: string | null; isActive: boolean; _count: { items: number; cases: number; testPlans: number; executions: number; reports: number } };
   expanded: boolean;
@@ -406,9 +179,6 @@ function ProjectCard({
   onNewItem: () => void;
   onEditItem: (id: string) => void;
   onDeleteItem: (id: string) => void;
-  onEditProject: () => void;
-  onDeleteProject: () => void;
-  onToggleProject: () => void;
   lang: string;
 }) {
   const { t } = useLang();
@@ -468,19 +238,12 @@ function ProjectCard({
               <p className="text-xs text-muted-foreground truncate mt-0.5">{project.description}</p>
             )}
           </div>
-          <div className="flex items-center gap-3 shrink-0" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-center gap-3 shrink-0">
             <div className="flex gap-2 text-xs text-muted-foreground">
               <span>{project._count.items} {project._count.items === 1 ? terms.item.singular.toLowerCase() : terms.item.plural.toLowerCase()}</span>
               <span>·</span>
               <span>{project._count.cases} {project._count.cases === 1 ? terms.casoDeTeste.singular.toLowerCase() : terms.casoDeTeste.plural.toLowerCase()}</span>
             </div>
-            <Tip text={t.projects.edit_project}><Button variant="ghost" size="icon" className="h-8 w-8" onClick={onEditProject}><Pencil className="h-3.5 w-3.5" /></Button></Tip>
-            <Tip text={project.isActive ? t.projects.deactivate_title : t.projects.activate_title}>
-              <Button variant="ghost" size="icon" className={`h-8 w-8 ${project.isActive ? "text-amber-500 hover:text-amber-600 hover:bg-amber-50" : "text-green-500 hover:text-green-600 hover:bg-green-50"}`} onClick={onToggleProject}>
-                {project.isActive ? <PowerOff className="h-3.5 w-3.5" /> : <Power className="h-3.5 w-3.5" />}
-              </Button>
-            </Tip>
-            <Tip text={t.projects.delete_project}><Button variant="ghost" size="icon" className="h-8 w-8 text-red-500 hover:text-red-600 hover:bg-red-50" onClick={onDeleteProject}><Trash2 className="h-3.5 w-3.5" /></Button></Tip>
             {expanded ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
           </div>
         </div>

@@ -17,14 +17,26 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (!credentials?.email || !credentials?.password) return null;
         const user = await prisma.user.findUnique({
           where: { email: credentials.email as string },
+          include: {
+            orgMembers: { include: { organization: { select: { id: true, slug: true, name: true } } } },
+          },
         });
         if (!user || !user.passwordHash) return null;
-        const valid = await bcrypt.compare(
-          credentials.password as string,
-          user.passwordHash
-        );
+        const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
         if (!valid) return null;
-        return { id: user.id, name: user.name, email: user.email, role: user.role };
+
+        // Pick the first active org membership (or null for super admins with no org)
+        const firstMember = user.orgMembers[0] ?? null;
+
+        return {
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: user.role,
+          isSuperAdmin: user.isSuperAdmin,
+          orgId: firstMember?.organizationId ?? null,
+          orgRole: firstMember?.role ?? null,
+        };
       },
     }),
   ],
@@ -34,6 +46,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.id = user.id;
         token.name = user.name;
         token.role = (user as { role?: string }).role ?? "TESTER";
+        token.isSuperAdmin = (user as { isSuperAdmin?: boolean }).isSuperAdmin ?? false;
+        token.orgId = (user as { orgId?: string | null }).orgId ?? null;
+        token.orgRole = (user as { orgRole?: string | null }).orgRole ?? null;
       }
       if (trigger === "update" && session?.name) {
         token.name = session.name;
@@ -44,7 +59,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (token) {
         session.user.id = token.id as string;
         session.user.name = token.name as string;
-        (session.user as { role?: string }).role = token.role as string;
+        (session.user as unknown as Record<string, unknown>).role = token.role;
+        (session.user as unknown as Record<string, unknown>).isSuperAdmin = token.isSuperAdmin;
+        (session.user as unknown as Record<string, unknown>).orgId = token.orgId;
+        (session.user as unknown as Record<string, unknown>).orgRole = token.orgRole;
       }
       return session;
     },

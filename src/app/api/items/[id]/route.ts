@@ -14,7 +14,7 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const body = await req.json();
-  const { title, description, type, priority, projectId, moduleId, reference, acceptanceCriteria, notes } = body;
+  const { title, description, type, priority, status, projectId, moduleId, reference, acceptanceCriteria, notes } = body;
 
   const item = await prisma.item.update({
     where: { id },
@@ -23,6 +23,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       description: description ?? undefined,
       ...(type && { type }),
       ...(priority && { priority }),
+      ...(status && { status }),
       ...(projectId && { projectId }),
       moduleId: moduleId || null,
       reference: reference || null,

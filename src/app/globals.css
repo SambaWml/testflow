@@ -23,6 +23,7 @@
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
   --radius-sm: calc(var(--radius) - 4px);
   --radius-md: calc(var(--radius) - 2px);
   --radius-lg: var(--radius);
@@ -51,6 +52,7 @@
   --input: #e2e8f0;
   --ring: #2563eb;
   --radius: 0.5rem;
+  --sidebar: #f4f6f9;
 
   /* Semantic surfaces */
   --surface-green-bg: #f0fdf4;
@@ -91,6 +93,7 @@
   --border: #2d3a50;
   --input: #2d3a50;
   --ring: #4f8ef7;
+  --sidebar: #111827;
 
   /* Semantic surfaces — muted tints for dark mode */
   --surface-green-bg: rgba(34, 197, 94, 0.08);
@@ -117,6 +120,14 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: system-ui, -apple-system, sans-serif;
+}
+
+/* ── Sidebar surface ───────────────────────────────────────────────── */
+.tf-sidebar {
+  background-color: #eef1f6;
+}
+.dark .tf-sidebar {
+  background-color: #111827;
 }
 
 /* ── Dark mode global overrides ────────────────────────────────────── */

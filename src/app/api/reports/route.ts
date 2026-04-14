@@ -1,10 +1,23 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-
-const DEMO_USER_ID = "demo-user-id";
+import { sessionUser, getProjectsForUser } from "@/lib/permissions";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const u = sessionUser(session.user);
+
+  let projectIdFilter: string[] | null = null;
+  if (!u.isSuperAdmin && u.orgId && u.orgRole) {
+    projectIdFilter = await getProjectsForUser(u.id, u.orgId, u.orgRole);
+  }
+
   const reports = await prisma.report.findMany({
+    where: {
+      ...(u.orgId && !u.isSuperAdmin ? { organizationId: u.orgId } : {}),
+      ...(projectIdFilter !== null ? { projectId: { in: projectIdFilter } } : {}),
+    },
     orderBy: { generatedAt: "desc" },
     include: {
       project: { select: { name: true } },
@@ -17,6 +30,10 @@ export async function GET() {
 
 export async function POST(req: Request) {
   try {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    const u = sessionUser(session.user);
+
     const body = await req.json();
     const { testPlanId, title, notes } = body;
 
@@ -26,50 +43,37 @@ export async function POST(req: Request) {
 
     const testPlan = await prisma.testPlan.findUnique({
       where: { id: testPlanId },
-      include: {
-        executions: { select: { id: true, status: true } },
-      },
+      include: { executions: { select: { id: true, status: true } } },
     });
 
     if (!testPlan) {
       return NextResponse.json({ error: "Plano não encontrado" }, { status: 404 });
     }
-
     if (!testPlan.executions.length) {
       return NextResponse.json({ error: "O plano não possui execuções registradas" }, { status: 400 });
     }
 
-    // Compute stats
     const counts: Record<string, number> = {};
-    testPlan.executions.forEach((ex) => {
-      counts[ex.status] = (counts[ex.status] ?? 0) + 1;
-    });
+    testPlan.executions.forEach((ex) => { counts[ex.status] = (counts[ex.status] ?? 0) + 1; });
     const total = testPlan.executions.length;
     const pass = counts.PASS ?? 0;
     const executed = total - (counts.NOT_EXECUTED ?? 0) - (counts.SKIPPED ?? 0);
     const passRate = executed > 0 ? Math.round((pass / executed) * 100) : 0;
 
-    const metadata = JSON.stringify({
-      counts, total, passRate,
-      testPlanId, testPlanName: testPlan.name,
-    });
-
-    await ensureDemoUser();
+    const metadata = JSON.stringify({ counts, total, passRate, testPlanId, testPlanName: testPlan.name });
 
     const report = await prisma.report.create({
       data: {
         title: (title?.trim()) || testPlan.name,
         projectId: testPlan.projectId,
-        authorId: DEMO_USER_ID,
+        authorId: u.id,
+        organizationId: testPlan.organizationId ?? u.orgId ?? null,
         environment: testPlan.environment || null,
         buildVersion: testPlan.buildVersion || null,
         notes: notes?.trim() || testPlan.notes || null,
         metadata,
         items: {
-          create: testPlan.executions.map((ex, i) => ({
-            executionId: ex.id,
-            order: i,
-          })),
+          create: testPlan.executions.map((ex, i) => ({ executionId: ex.id, order: i })),
         },
       },
       include: {
@@ -82,14 +86,5 @@ export async function POST(req: Request) {
   } catch (err) {
     console.error("[POST /api/reports]", err);
     return NextResponse.json({ error: String(err) }, { status: 500 });
-  }
-}
-
-async function ensureDemoUser() {
-  const exists = await prisma.user.findUnique({ where: { id: DEMO_USER_ID } });
-  if (!exists) {
-    await prisma.user.create({
-      data: { id: DEMO_USER_ID, name: "Demo User", email: "demo@testflow.com" },
-    });
   }
 }
