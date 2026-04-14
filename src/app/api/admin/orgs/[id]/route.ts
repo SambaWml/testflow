@@ -55,7 +55,22 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
   const org = await prisma.organization.findUnique({ where: { id } });
   if (!org) return NextResponse.json({ error: "Organização não encontrada" }, { status: 404 });
 
-  // Nullify nullable organizationId references before deleting to avoid FK constraint errors
+  // Collect member user IDs before deleting
+  const members = await prisma.orgMember.findMany({
+    where: { organizationId: id },
+    select: { userId: true },
+  });
+  const memberUserIds = members.map((m) => m.userId);
+
+  // Find which of those users also belong to other orgs (keep them)
+  const sharedUsers = await prisma.orgMember.findMany({
+    where: { userId: { in: memberUserIds }, organizationId: { not: id } },
+    select: { userId: true },
+  });
+  const sharedUserIds = new Set(sharedUsers.map((m) => m.userId));
+  const userIdsToDelete = memberUserIds.filter((uid) => !sharedUserIds.has(uid));
+
+  // Nullify nullable FK references, delete org (cascades to members), then delete exclusive users
   await prisma.$transaction([
     prisma.item.updateMany({ where: { organizationId: id }, data: { organizationId: null } }),
     prisma.testCase.updateMany({ where: { organizationId: id }, data: { organizationId: null } }),
@@ -63,6 +78,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
     prisma.testPlan.updateMany({ where: { organizationId: id }, data: { organizationId: null } }),
     prisma.report.updateMany({ where: { organizationId: id }, data: { organizationId: null } }),
     prisma.organization.delete({ where: { id } }),
+    ...(userIdsToDelete.length > 0
+      ? [prisma.user.deleteMany({ where: { id: { in: userIdsToDelete } } })]
+      : []),
   ]);
 
   return NextResponse.json({ success: true });
