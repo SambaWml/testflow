@@ -31,8 +31,4 @@ export default defineConfig({
     path: "prisma/migrations",
     seed: "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' ./prisma/seed.ts",
   },
-  datasource: {
-    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
-    directUrl: process.env["DIRECT_URL"],
-  },
 });
