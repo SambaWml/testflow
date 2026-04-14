@@ -4,12 +4,13 @@ import { Pool } from "pg";
 
 function createPrismaClient() {
   const url = process.env.DATABASE_URL;
-  if (url?.startsWith("postgresql") || url?.startsWith("postgres")) {
-    const pool = new Pool({ connectionString: url });
-    const adapter = new PrismaPg(pool);
-    return new PrismaClient({ adapter });
-  }
-  return new PrismaClient();
+  if (!url) throw new Error("DATABASE_URL não definida");
+  const pool = new Pool({
+    connectionString: url,
+    ssl: url.includes("supabase.com") ? { rejectUnauthorized: false } : false,
+  });
+  const adapter = new PrismaPg(pool);
+  return new PrismaClient({ adapter });
 }
 
 const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };

@@ -1,10 +1,17 @@
-import { PrismaClient } from "../src/generated/prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 
-const adapter = new PrismaLibSql({ url: "file:./dev.db" });
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const prisma = new PrismaClient({ adapter } as any);
+const url = process.env.DATABASE_URL;
+if (!url) throw new Error("DATABASE_URL não definida");
+
+const pool = new Pool({
+  connectionString: url,
+  ssl: url.includes("supabase.com") ? { rejectUnauthorized: false } : false,
+});
+const adapter = new PrismaPg(pool);
+const prisma = new PrismaClient({ adapter });
 
 async function main() {
   console.log("🌱 Seeding database...");

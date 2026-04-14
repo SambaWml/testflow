@@ -15,14 +15,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       },
       async authorize(credentials) {
         if (!credentials?.email || !credentials?.password) return null;
-        const user = await prisma.user.findUnique({
-          where: { email: credentials.email as string },
-          include: {
-            orgMembers: { include: { organization: { select: { id: true, slug: true, name: true } } } },
-          },
-        });
+        let user;
+        try {
+          user = await prisma.user.findUnique({
+            where: { email: credentials.email as string },
+            include: {
+              orgMembers: { include: { organization: { select: { id: true, slug: true, name: true } } } },
+            },
+          });
+        } catch (e) {
+          console.error("[auth] erro ao buscar usuário:", e);
+          return null;
+        }
+        console.log("[auth] usuário encontrado:", user?.email ?? "nenhum");
         if (!user || !user.passwordHash) return null;
         const valid = await bcrypt.compare(credentials.password as string, user.passwordHash);
+        console.log("[auth] senha válida:", valid);
         if (!valid) return null;
 
         // Pick the first active org membership (or null for super admins with no org)
