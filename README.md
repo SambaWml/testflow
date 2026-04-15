@@ -1,87 +1,213 @@
-# TestFlow — Test Management System
+# TestFlow
 
-A complete web platform for planning, executing, and reporting software tests — with AI-powered test case generation.
+Plataforma web multi-tenant para planejamento, execução e reporte de testes de software — com geração de casos de teste via IA e painel de super-administração.
 
-## Features
+---
 
-- **Dashboard** — overview with metrics, pass rate, status chart, and quick actions
-- **Projects** — organize items and test cases per project, with expand/collapse and tab view (items / test cases)
-- **Items** — register User Stories, Bugs, Improvements, Requirements, Flows, and Tasks
-- **AI Generator** — generate BDD or Step-by-Step test cases via OpenAI GPT-4o (falls back to mock without API key); optionally create a Test Plan directly after generation
-- **Test Cases** — list and grid views, filter by project/format/priority, bulk delete
-- **Executions** — run test plans case by case, record status, notes, bug refs, and multiple evidence links; navigate back to previous cases while preserving draft input
-- **Reports** — consolidate executions, view pass/fail stats, export to PDF or copy as Markdown
-- **Settings** — manage projects, modules, terminology, and system preferences (including language)
-- **Profile** — edit name and change password from the topbar avatar dropdown
+## Funcionalidades
 
-## Tech Stack
+### Módulos principais
 
-- Next.js 15 (App Router) + TypeScript 5
-- Prisma 6 + SQLite (swap to PostgreSQL for production)
-- Tailwind CSS 4 + Radix UI
-- TanStack Query v5
-- NextAuth v5 (JWT strategy)
-- OpenAI GPT-4o (test case generation)
-- Recharts (charts)
+| Módulo | Descrição |
+|--------|-----------|
+| **Dashboard** | Visão geral com KPIs, gráfico de status, taxa de aprovação e ações rápidas. Dashboard QA com filtros por período, membro, projeto e prioridade. |
+| **Projetos** | Organiza itens e casos de teste por projeto. Suporte a múltiplos tipos de item (User Story, Bug, Melhoria, Requisito, Fluxo, Tarefa). |
+| **Casos de Teste** | Visualização em lista ou grade, filtros por projeto/formato/prioridade, exclusão em lote. |
+| **Gerador IA** | Geração de casos BDD ou Step-by-Step via IA. Suporte a OpenAI, Manus AI e Claude. Pode criar Plano de Teste diretamente após a geração. |
+| **Execuções** | Executa planos de teste caso a caso, registra status, notas, bugs relacionados e múltiplos links de evidência. Permite navegar para casos anteriores mantendo os rascunhos. |
+| **Relatórios** | Consolida execuções, exibe estatísticas de aprovação/reprovação, exporta para PDF ou copia como Markdown. |
+| **Bugs** | Registro e acompanhamento de bugs com status, prioridade e projeto. |
 
-## Setup
+### Configurações
 
-### Requirements
+| Submenu | Descrição |
+|---------|-----------|
+| **Geral** | Nome da organização, idioma (pt-BR / en-US) e aba "Sobre" com informações da plataforma. |
+| **Dashboards** | Ativa/desativa e renomeia os dashboards "Visão Geral" e "Dashboard QA" (somente Owner). |
+| **Termos** | Personaliza os 12 termos do sistema (singular e plural) — ex.: renomear "Bug" para "Defeito". |
+| **Membros** | Convida, visualiza e remove membros da organização. |
+| **Projetos** | Gerencia os projetos da organização, incluindo exclusão com contagem de itens vinculados. |
+
+### Painel Super Admin (`/admin`)
+
+| Seção | Descrição |
+|-------|-----------|
+| **Organizações** | Lista, cria, ativa/desativa e exclui organizações. |
+| **Super Admins** | Gerencia contas com acesso ao painel de administração. |
+| **Configuração IA** | Define o provedor de IA ativo (OpenAI / Manus AI / Claude) e suas chaves de API e modelos. |
+
+---
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|-----------|
+| Framework | Next.js 16 (App Router) |
+| Linguagem | TypeScript 5 |
+| UI | React 19 + Radix UI + Tailwind CSS 4 |
+| Formulários | React Hook Form + Zod |
+| Estado servidor | TanStack Query v5 |
+| Estado global | Zustand |
+| Auth | NextAuth v5 (JWT) |
+| ORM | Prisma 7 |
+| Banco | PostgreSQL (Supabase) |
+| IA | OpenAI SDK / Manus AI / Anthropic Claude |
+| Gráficos | Recharts |
+| PDF | @react-pdf/renderer |
+| Email | Nodemailer (SMTP) |
+
+---
+
+## Setup local
+
+### Requisitos
+
 - Node.js 20+
-- npm
+- Banco PostgreSQL (ex.: Supabase)
 
-### Installation
+### Instalação
 
 ```bash
 npm install
-npx prisma generate
+```
+
+### Variáveis de ambiente
+
+Crie `.env.local` na raiz do projeto:
+
+```env
+# Banco de dados
+# Pooler (usado pela aplicação em runtime — porta 6543 para Supabase)
+DATABASE_URL="postgresql://postgres.[project-ref]:[password]@[region].pooler.supabase.com:6543/postgres"
+
+# Conexão direta (usada pelo Prisma para migrations — porta 5432)
+DIRECT_URL="postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres"
+
+# Auth
+NEXTAUTH_SECRET="seu-secret-aqui"
+NEXTAUTH_URL="http://localhost:3000"
+
+# SMTP (convites por e-mail)
+SMTP_HOST=smtp.gmail.com
+SMTP_PORT=587
+SMTP_SECURE=false
+SMTP_USER=seu@email.com
+SMTP_PASS=sua-senha-de-app
+SMTP_FROM=TestFlow <seu@email.com>
+
+# IA — opcional, configurável também pelo painel Super Admin
+# OPENAI_API_KEY="sk-..."
+# MANUS_API_KEY="sk-..."
+# ANTHROPIC_API_KEY="sk-ant-..."
+```
+
+### Banco de dados
+
+```bash
+# Aplica o schema e gera o client Prisma
 npx prisma db push
+
+# Popula o banco com dados iniciais (super admin + org demo)
 npm run seed
+```
+
+### Iniciar
+
+```bash
 npm run dev
 ```
 
-Access: http://localhost:3000
+Acesse: http://localhost:3000
 
-**Demo login:** admin@testflow.com / admin123
+**Login super admin:** `superadmin@testflow.com` / `superadmin123`  
+**Login demo:** `admin@testflow.com` / `admin123`
 
-### Environment variables (.env.local)
+---
 
-```env
-DATABASE_URL="file:./dev.db"
-NEXTAUTH_SECRET="your-secret-here"
-NEXTAUTH_URL="http://localhost:3000"
+## Migrations (Prisma 7 + Supabase)
 
-# Optional — enables real AI generation (uses mock without this)
-OPENAI_API_KEY="sk-..."
+O Supabase usa um connection pooler (porta 6543) para runtime, mas DDL (CREATE TABLE, ALTER TABLE) requer conexão direta (porta 5432). O `prisma.config.ts` já está configurado para usar `DIRECT_URL` nas migrations.
+
+```bash
+# Aplicar migrations pendentes
+npx prisma migrate deploy
+
+# Criar nova migration durante desenvolvimento
+npx prisma migrate dev --name nome_da_migration
+
+# Sincronizar schema sem gerar arquivo de migration (não recomendado em produção)
+npx prisma db push
 ```
 
-## AI Generation
+> **Atenção:** nunca use o pooler (porta 6543) para migrations — o Supabase Supavisor rejeita DDL nesse modo.
 
-- **Without `OPENAI_API_KEY`**: generates mock test cases automatically (fully functional for testing).
-- **With `OPENAI_API_KEY`**: uses GPT-4o for context-aware, real generation based on the item description.
+---
 
-## PDF Export
+## Terminologia personalizável
 
-The PDF report opens in a new tab with a formatted layout and triggers `window.print()` automatically. Use "Save as PDF" in the browser print dialog.
+O sistema expõe 12 termos editáveis via **Configurações → Termos**. Os termos são armazenados em `localStorage` por idioma e aplicados em toda a interface dinamicamente.
 
-## Database
+| Chave | Padrão (pt-BR) |
+|-------|---------------|
+| `projeto` | Projeto / Projetos |
+| `bug` | Bug / Bugs |
+| `relatorio` | Relatório / Relatórios |
+| `execucao` | Execução / Execuções |
+| `casoDeTeste` | Caso de Teste / Casos de Teste |
+| `planoDeTeste` | Plano de Teste / Planos de Teste |
+| `item` | Item / Itens |
+| `ambiente` | Ambiente / Ambientes |
+| `build` | Build / Versão / Builds / Versões |
+| `evidencia` | Evidência / Evidências |
+| `bugRelacionado` | Bug Relacionado / Bugs Relacionados |
+| `preCondicao` | Pré-condição / Pré-condições |
 
-SQLite by default (`dev.db`). To use PostgreSQL in production:
+---
 
-```env
-DATABASE_URL="postgresql://user:pass@host:5432/testflow"
-```
+## Provedores de IA
 
-Then run `npx prisma migrate deploy`.
+A configuração do provedor ativo é feita pelo Super Admin em `/admin/ai`. Fallback para variáveis de ambiente se não houver configuração no banco.
 
-## Routes
+| Provedor | Modelo padrão | Env var |
+|----------|--------------|---------|
+| OpenAI | `gpt-4o` | `OPENAI_API_KEY` |
+| Manus AI | `claude-sonnet-4-5` | `MANUS_API_KEY` + `MANUS_BASE_URL` |
+| Claude (Anthropic) | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` |
 
-| Route | Screen |
-|---|---|
-| `/` | Dashboard |
-| `/projects` | Projects & Items |
-| `/generator` | AI Test Case Generator |
-| `/cases` | Test Cases |
-| `/executions` | Test Execution |
-| `/reports` | Reports |
-| `/settings` | Settings |
+Sem provedor configurado, o gerador retorna casos de teste mockados para não bloquear o fluxo.
+
+---
+
+## Rotas
+
+| Rota | Tela |
+|------|------|
+| `/` | Dashboard principal |
+| `/projects` | Projetos e itens |
+| `/cases` | Casos de teste |
+| `/generator` | Gerador IA |
+| `/executions` | Execuções |
+| `/reports` | Relatórios |
+| `/bugs` | Bugs |
+| `/settings/general` | Configurações gerais + Sobre |
+| `/settings/dashboards` | Gerenciamento de dashboards |
+| `/settings/terms` | Terminologia personalizada |
+| `/settings/members` | Membros da organização |
+| `/settings/projects` | Projetos da organização |
+| `/admin` | Painel super admin — organizações |
+| `/admin/admins` | Super admins |
+| `/admin/ai` | Configuração do provedor de IA |
+
+---
+
+## Multi-tenancy
+
+Cada organização tem membros com papéis:
+
+| Papel | Permissões |
+|-------|-----------|
+| `OWNER` | Acesso total, incluindo configurações de dashboards e termos |
+| `ADMIN` | Gerencia membros, projetos e execuções |
+| `MEMBER` | Acesso de leitura e execução |
+
+Super Admins têm acesso ao painel `/admin` independentemente de pertencer a uma organização.
