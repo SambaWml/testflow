@@ -140,7 +140,6 @@ export default function SettingsGeneratorPage() {
       <Topbar
         title={t.settings.tab_generator}
         subtitle="Configure os formatos disponíveis na geração de casos com IA."
-        icon={<Wand2 className="h-5 w-5" />}
       />
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-xl">
