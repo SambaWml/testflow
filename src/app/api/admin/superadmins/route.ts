@@ -2,8 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
+import type { Session } from "next-auth";
 
-function requireSuperAdmin(session: Awaited<ReturnType<typeof auth>>) {
+function requireSuperAdmin(session: Session | null) {
   if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   if (!(session.user as { isSuperAdmin?: boolean }).isSuperAdmin)
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
