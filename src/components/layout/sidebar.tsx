@@ -5,19 +5,22 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FolderOpen, TestTube2, Wand2, Play, BarChart3,
   Settings, ChevronLeft, ChevronRight, FlaskConical, Users, ShieldCheck,
-  ChevronDown, ChevronUp, FolderCog, SlidersHorizontal, Bug,
+  ChevronDown, ChevronUp, FolderCog, SlidersHorizontal, Bug, Tag, Info, WandSparkles,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
-import { getTerms } from "@/lib/term-config";
 import { useLang } from "@/contexts/lang-context";
+import { useTerms } from "@/contexts/terms-context";
 import { useSession } from "next-auth/react";
 import { useQuery } from "@tanstack/react-query";
 
 const SETTINGS_SUBMENUS = [
-  { href: "/settings/members", icon: Users, label: "Membros" },
-  { href: "/settings/projects", icon: FolderCog, label: "Projetos" },
-  { href: "/settings/general", icon: SlidersHorizontal, label: "Geral" },
+  { href: "/settings/members", icon: Users, label: "Membros", ownerOnly: false },
+  { href: "/settings/projects", icon: FolderCog, label: "Projetos", ownerOnly: true },
+  { href: "/settings/general", icon: SlidersHorizontal, label: "Geral", ownerOnly: false },
+  { href: "/settings/dashboards", icon: LayoutDashboard, label: "Dashboards", ownerOnly: true },
+  { href: "/settings/terms", icon: Tag, label: "Termos", ownerOnly: true },
+  { href: "/settings/generator", icon: WandSparkles, label: "Gerador IA", ownerOnly: false },
 ];
 
 const ROLE_LABELS: Record<string, string> = {
@@ -57,7 +60,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [collapsed, setCollapsed] = useState(false);
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const { data: session } = useSession();
   const user = session?.user as {
     isSuperAdmin?: boolean; orgRole?: string; name?: string; email?: string;
@@ -85,7 +88,7 @@ export function Sidebar() {
   const navItems = [
     { href: "/", icon: LayoutDashboard, label: t.nav.dashboard, exact: true },
     { href: "/projects", icon: FolderOpen, label: terms.projeto.plural },
-    { href: "/bugs", icon: Bug, label: "Bugs" },
+    { href: "/bugs", icon: Bug, label: terms.bug.plural },
     { href: "/generator", icon: Wand2, label: t.nav.ia_generator },
     { href: "/cases", icon: TestTube2, label: terms.casoDeTeste.plural },
     { href: "/executions", icon: Play, label: terms.execucao.plural },
@@ -162,7 +165,7 @@ export function Sidebar() {
         {settingsOpen && !collapsed && (
           <div className="ml-5 border-l border-border/50 pl-3 space-y-0.5 mt-0.5">
             {SETTINGS_SUBMENUS.map((sub) => {
-              if (sub.href !== "/settings/general" && !canManageSettings) return null;
+              if (sub.ownerOnly && !canManageSettings) return null;
               const active = pathname.startsWith(sub.href);
               return (
                 <Link
@@ -187,7 +190,7 @@ export function Sidebar() {
         {collapsed && (
           <div className="mt-0.5 space-y-0.5">
             {SETTINGS_SUBMENUS.map((sub) => {
-              if (sub.href !== "/settings/general" && !canManageSettings) return null;
+              if (sub.ownerOnly && !canManageSettings) return null;
               const active = pathname.startsWith(sub.href);
               return (
                 <Link

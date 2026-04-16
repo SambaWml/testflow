@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTerms } from "@/lib/term-config";
 import { useLang } from "@/contexts/lang-context";
+import { useTerms } from "@/contexts/terms-context";
 import { Topbar } from "@/components/layout/topbar";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -38,8 +38,7 @@ type TestCase = {
 export default function CasesPage() {
   const qc = useQueryClient();
   const { t, lang } = useLang();
-  const [terms, setTerms] = useState(() => getTerms());
-  useEffect(() => { setTerms(getTerms()); }, []);
+  const { terms } = useTerms();
   const [editingCase, setEditingCase] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [expandedCards, setExpandedCards] = useState<Set<string>>(new Set());

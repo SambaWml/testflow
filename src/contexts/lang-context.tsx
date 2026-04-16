@@ -1,7 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
-import { translations, getLang, setLangAndReload, type Lang, type Translation } from "@/lib/i18n";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { translations, getLang, LANG_STORAGE_KEY, type Lang, type Translation } from "@/lib/i18n";
 
 interface LangContextValue {
   lang: Lang;
@@ -10,16 +10,28 @@ interface LangContextValue {
 }
 
 const LangContext = createContext<LangContextValue>({
-  lang: "en-US",
-  t: translations["en-US"],
-  switchLang: setLangAndReload,
+  lang: "pt-BR",
+  t: translations["pt-BR"],
+  switchLang: () => {},
 });
 
 export function LangProvider({ children }: { children: React.ReactNode }) {
-  const [lang] = useState<Lang>(() => getLang());
+  // Start with pt-BR so server and client render the same initial HTML (no hydration mismatch).
+  // After mount, read localStorage and update if the user has a different preference saved.
+  const [lang, setLang] = useState<Lang>("pt-BR");
+
+  useEffect(() => {
+    const stored = getLang();
+    if (stored !== "pt-BR") setLang(stored);
+  }, []);
+
+  function switchLang(l: Lang) {
+    localStorage.setItem(LANG_STORAGE_KEY, l);
+    setLang(l);
+  }
 
   return (
-    <LangContext.Provider value={{ lang, t: translations[lang], switchLang: setLangAndReload }}>
+    <LangContext.Provider value={{ lang, t: translations[lang], switchLang }}>
       {children}
     </LangContext.Provider>
   );

@@ -20,13 +20,21 @@ export async function PATCH(req: Request) {
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
-  const { name, currentPassword, newPassword } = body;
+  const { name, email, currentPassword, newPassword } = body as {
+    name?: string;
+    email?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  };
 
   const user = await prisma.user.findUnique({ where: { id: session.user.id } });
   if (!user) return NextResponse.json({ error: "User not found" }, { status: 404 });
 
-  // If changing password, verify current password first
-  if (newPassword) {
+  const isChangingEmail = email && email !== user.email;
+  const isChangingPassword = !!newPassword;
+
+  // Current password required when changing email or password
+  if (isChangingEmail || isChangingPassword) {
     if (!currentPassword) {
       return NextResponse.json({ error: "current_password_required" }, { status: 400 });
     }
@@ -39,11 +47,18 @@ export async function PATCH(req: Request) {
     }
   }
 
+  // Check email uniqueness
+  if (isChangingEmail) {
+    const taken = await prisma.user.findUnique({ where: { email } });
+    if (taken) return NextResponse.json({ error: "email_taken" }, { status: 409 });
+  }
+
   const updated = await prisma.user.update({
     where: { id: session.user.id },
     data: {
-      ...(name && { name }),
-      ...(newPassword && { passwordHash: await bcrypt.hash(newPassword, 10) }),
+      ...(name?.trim() && { name: name.trim() }),
+      ...(isChangingEmail && { email }),
+      ...(isChangingPassword && { passwordHash: await bcrypt.hash(newPassword, 10) }),
     },
     select: { id: true, name: true, email: true, role: true },
   });

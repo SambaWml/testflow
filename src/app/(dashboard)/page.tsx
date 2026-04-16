@@ -14,7 +14,7 @@ import {
   Wand2, ArrowRight, Bug, BarChart3, Users, FolderOpen, ChevronDown, ShieldOff, X,
 } from "lucide-react";
 import Link from "next/link";
-import { getTerms } from "@/lib/term-config";
+import { useTerms } from "@/contexts/terms-context";
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip, BarChart, Bar, XAxis, YAxis, CartesianGrid, LabelList } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -50,23 +50,17 @@ const PERIODS = [
   { label: "90 dias", value: 90 },
 ];
 
-const QA_VIEWS = [
-  { key: "overview", label: "Visão Geral", icon: BarChart3 },
-  { key: "byQA", label: "Por QA", icon: Users },
-  { key: "byProject", label: "Por Projeto", icon: FolderOpen },
-  { key: "byBug", label: "Por Bugs", icon: Bug },
-] as const;
-
-type QAView = (typeof QA_VIEWS)[number]["key"];
+type QAView = "overview" | "byQA" | "byProject" | "byBug";
 
 export default function DashboardPage() {
   const { data: session } = useSession();
   const router = useRouter();
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const user = session?.user as {
     isSuperAdmin?: boolean; orgRole?: string; name?: string; email?: string;
   } | undefined;
+
 
   const [qaView, setQaView] = useState<QAView>("overview");
   const [period, setPeriod] = useState(30);
@@ -89,6 +83,7 @@ export default function DashboardPage() {
   // Org feature flags
   const { data: features } = useQuery<{
     overviewEnabled: boolean;
+    overviewName: string;
     qaDashboardEnabled: boolean;
     qaDashboardName: string;
   }>({
@@ -98,8 +93,16 @@ export default function DashboardPage() {
   });
 
   const overviewEnabled = features?.overviewEnabled ?? true;
+  const overviewName = features?.overviewName ?? "Visão Geral";
   const qaDashboardEnabled = features?.qaDashboardEnabled ?? true;
   const qaDashboardName = features?.qaDashboardName ?? "Dashboard QA";
+
+  const QA_VIEWS = [
+    { key: "overview" as const, label: terms.qaOverview.singular, icon: BarChart3 },
+    { key: "byQA" as const, label: terms.porQA.singular, icon: Users },
+    { key: "byProject" as const, label: terms.porProjeto.singular, icon: FolderOpen },
+    { key: "byBug" as const, label: terms.porBug.singular, icon: Bug },
+  ];
 
   // Determine which tab is active — auto-redirect if the saved tab is now disabled
   const defaultTab = overviewEnabled ? "geral" : (canAccessQA && qaDashboardEnabled ? "qa" : "geral");
@@ -352,12 +355,12 @@ export default function DashboardPage() {
 
             {/* Project */}
             <FilterSelect
-              label="Projeto"
+              label={terms.projeto.singular}
               value={filterProjectId}
               onChange={setFilterProjectId}
               active={!!filterProjectId}
             >
-              <option value="">Todos os projetos</option>
+              <option value="">Todos os {terms.projeto.plural.toLowerCase()}</option>
               {projects.map((p: { id: string; name: string }) => (
                 <option key={p.id} value={p.id}>{p.name}</option>
               ))}
@@ -365,12 +368,12 @@ export default function DashboardPage() {
 
             {/* Member */}
             <FilterSelect
-              label="Membro"
+              label={terms.membro.singular}
               value={filterUserId}
               onChange={setFilterUserId}
               active={!!filterUserId}
             >
-              <option value="">Todos os membros</option>
+              <option value="">Todos os {terms.membro.plural.toLowerCase()}</option>
               {members.map((m: { id: string; name: string }) => (
                 <option key={m.id} value={m.id}>{m.name}</option>
               ))}
@@ -378,7 +381,7 @@ export default function DashboardPage() {
 
             {/* Bug Status */}
             <FilterSelect
-              label="Status do bug"
+              label={`Status do ${terms.bug.singular.toLowerCase()}`}
               value={filterBugStatus}
               onChange={setFilterBugStatus}
               active={!!filterBugStatus}
@@ -422,9 +425,9 @@ export default function DashboardPage() {
 
           {/* KPI cards */}
           <div className="grid grid-cols-3 gap-4">
-            <StatCard icon={Bug} label="Bugs criados" value={qaStats.bugs} color="text-red-600" bg="bg-red-50" loading={qaLoading} />
-            <StatCard icon={Play} label="Planos executados" value={qaStats.plans} color="text-orange-600" bg="bg-orange-50" loading={qaLoading} />
-            <StatCard icon={BarChart3} label="Relatórios gerados" value={qaStats.reports} color="text-blue-600" bg="bg-blue-50" loading={qaLoading} />
+            <StatCard icon={Bug} label={`${terms.bug.plural} criados`} value={qaStats.bugs} color="text-red-600" bg="bg-red-50" loading={qaLoading} />
+            <StatCard icon={Play} label={`${terms.planoDeTeste.plural} executados`} value={qaStats.plans} color="text-orange-600" bg="bg-orange-50" loading={qaLoading} />
+            <StatCard icon={BarChart3} label={`${terms.relatorio.plural} gerados`} value={qaStats.reports} color="text-blue-600" bg="bg-blue-50" loading={qaLoading} />
           </div>
 
           {/* ── Visão Geral ── */}
@@ -433,7 +436,7 @@ export default function DashboardPage() {
               {/* Bug distribution by status */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Distribuição de Bugs por Status</CardTitle>
+                  <CardTitle className="text-base">Distribuição de {terms.bug.plural} por Status</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {bugDistribution.length > 0 ? (
@@ -457,17 +460,17 @@ export default function DashboardPage() {
               {/* Bug distribution by priority */}
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base">Bugs por Prioridade</CardTitle>
+                  <CardTitle className="text-base">{terms.bug.plural} por Prioridade</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {bugByPriority.length > 0 ? (
                     <ResponsiveContainer width="100%" height={200}>
-                      <BarChart data={bugByPriority.map((b: { priority: string; count: number }) => ({ name: b.priority, Bugs: b.count }))} barSize={32}>
+                      <BarChart data={bugByPriority.map((b: { priority: string; count: number }) => ({ name: b.priority, bugs: b.count }))} barSize={32}>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                         <XAxis dataKey="name" tick={{ fontSize: 12 }} />
                         <YAxis tick={{ fontSize: 12 }} />
                         <Tooltip />
-                        <Bar dataKey="Bugs" radius={[4, 4, 0, 0]}>
+                        <Bar dataKey="bugs" name={terms.bug.plural} radius={[4, 4, 0, 0]}>
                           {bugByPriority.map((b: { priority: string; count: number }) => (
                             <Cell key={b.priority} fill={PRIORITY_COLORS[b.priority] ?? "#94a3b8"} />
                           ))}
@@ -483,7 +486,7 @@ export default function DashboardPage() {
               {/* Recent test plans */}
               <Card className="lg:col-span-2">
                 <CardHeader>
-                  <CardTitle className="text-base">Planos de Teste Recentes</CardTitle>
+                  <CardTitle className="text-base">{terms.planoDeTeste.plural} Recentes</CardTitle>
                 </CardHeader>
                 <CardContent>
                   {qaRecentPlans.length > 0 ? (
@@ -536,9 +539,9 @@ export default function DashboardPage() {
                         data={byQA.map((qa: { id: string; name: string; bugs: number; plans: number; reports: number }) => ({
                           name: qa.name.split(" ")[0],
                           fullName: qa.name,
-                          Bugs: qa.bugs,
-                          Planos: qa.plans,
-                          Relatórios: qa.reports,
+                          bugs: qa.bugs,
+                          planos: qa.plans,
+                          relatorios: qa.reports,
                         }))}
                         barCategoryGap="25%"
                         barGap={3}
@@ -552,14 +555,14 @@ export default function DashboardPage() {
                           contentStyle={{ borderRadius: 8, border: "1px solid var(--border)", background: "var(--background)", color: "var(--foreground)" }}
                         />
                         <Legend wrapperStyle={{ fontSize: 12 }} />
-                        <Bar dataKey="Bugs" fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                          <LabelList dataKey="Bugs" position="top" style={{ fontSize: 11, fill: "#ef4444", fontWeight: 600 }} />
+                        <Bar dataKey="bugs" name={terms.bug.plural} fill="#ef4444" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                          <LabelList dataKey="bugs" position="top" style={{ fontSize: 11, fill: "#ef4444", fontWeight: 600 }} />
                         </Bar>
-                        <Bar dataKey="Planos" fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                          <LabelList dataKey="Planos" position="top" style={{ fontSize: 11, fill: "#f97316", fontWeight: 600 }} />
+                        <Bar dataKey="planos" name={terms.planoDeTeste.plural} fill="#f97316" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                          <LabelList dataKey="planos" position="top" style={{ fontSize: 11, fill: "#f97316", fontWeight: 600 }} />
                         </Bar>
-                        <Bar dataKey="Relatórios" fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={36}>
-                          <LabelList dataKey="Relatórios" position="top" style={{ fontSize: 11, fill: "#3b82f6", fontWeight: 600 }} />
+                        <Bar dataKey="relatorios" name={terms.relatorio.plural} fill="#3b82f6" radius={[4, 4, 0, 0]} maxBarSize={36}>
+                          <LabelList dataKey="relatorios" position="top" style={{ fontSize: 11, fill: "#3b82f6", fontWeight: 600 }} />
                         </Bar>
                       </BarChart>
                     </ResponsiveContainer>
@@ -581,9 +584,9 @@ export default function DashboardPage() {
                         <thead>
                           <tr className="border-b">
                             <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Membro</th>
-                            <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">Bugs</th>
-                            <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">Planos</th>
-                            <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">Relatórios</th>
+                            <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">{terms.bug.plural}</th>
+                            <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">{terms.planoDeTeste.plural}</th>
+                            <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">{terms.relatorio.plural}</th>
                             <th className="text-center py-2 px-3 text-xs font-semibold text-muted-foreground">Total</th>
                           </tr>
                         </thead>
@@ -644,15 +647,15 @@ export default function DashboardPage() {
                           <div className="grid grid-cols-3 gap-3">
                             <div className="text-center">
                               <p className="text-xl font-bold text-red-600">{proj.bugs}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">Bugs</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{terms.bug.plural}</p>
                             </div>
                             <div className="text-center border-x border-border">
                               <p className="text-xl font-bold text-orange-600">{proj.plans}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">Planos</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{terms.planoDeTeste.plural}</p>
                             </div>
                             <div className="text-center">
                               <p className="text-xl font-bold text-blue-600">{proj.reports}</p>
-                              <p className="text-xs text-muted-foreground mt-0.5">Relatórios</p>
+                              <p className="text-xs text-muted-foreground mt-0.5">{terms.relatorio.plural}</p>
                             </div>
                           </div>
                         </div>
@@ -670,7 +673,7 @@ export default function DashboardPage() {
           {qaView === "byBug" && (
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Bugs Registrados</CardTitle>
+                <CardTitle className="text-base">{terms.bug.plural} Registrados</CardTitle>
               </CardHeader>
               <CardContent>
                 {recentBugs.length > 0 ? (
@@ -679,7 +682,7 @@ export default function DashboardPage() {
                       <thead>
                         <tr className="border-b">
                           <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Título</th>
-                          <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Projeto</th>
+                          <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">{terms.projeto.singular}</th>
                           <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Autor</th>
                           <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Prioridade</th>
                           <th className="text-left py-2 px-3 text-xs font-semibold text-muted-foreground">Status</th>

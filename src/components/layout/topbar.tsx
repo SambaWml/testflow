@@ -95,6 +95,7 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const user = data?.user;
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [currentPw, setCurrentPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirmPw, setConfirmPw] = useState("");
@@ -104,6 +105,8 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
   const [success, setSuccess] = useState(false);
 
   const displayName = name !== "" ? name : (user?.name ?? session?.user?.name ?? "");
+  const displayEmail = email !== "" ? email : (user?.email ?? session?.user?.email ?? "");
+  const isChangingEmail = !!user && email !== "" && email !== user.email;
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -113,7 +116,9 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           name: displayName,
+          ...(isChangingEmail && { email: displayEmail }),
           ...(newPw && { currentPassword: currentPw, newPassword: newPw }),
+          ...((isChangingEmail && !newPw) && { currentPassword: currentPw }),
         }),
       });
       const json = await res.json();
@@ -130,12 +135,13 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
     onError: (err: Error) => {
       if (err.message === "mismatch") setError(t.nav.profile_passwords_mismatch);
       else if (err.message === "wrong_password") setError(t.nav.profile_wrong_password);
+      else if (err.message === "email_taken") setError("Este e-mail já está em uso.");
       else setError(err.message);
     },
   });
 
   function handleClose() {
-    setName(""); setCurrentPw(""); setNewPw(""); setConfirmPw("");
+    setName(""); setEmail(""); setCurrentPw(""); setNewPw(""); setConfirmPw("");
     setError(""); setSuccess(false);
     onClose();
   }
@@ -178,13 +184,23 @@ function ProfileDialog({ open, onClose }: { open: boolean; onClose: () => void }
 
           <div className="space-y-1.5">
             <Label>{t.nav.profile_email}</Label>
-            <Input value={user?.email ?? session?.user?.email ?? ""} disabled className="opacity-60" />
+            <Input
+              type="email"
+              value={displayEmail}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder={t.nav.profile_email}
+            />
           </div>
 
           <div className="border-t pt-4 space-y-3">
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
-              {t.nav.profile_change_password}
-            </p>
+            <div className="flex items-center justify-between">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                {t.nav.profile_change_password}
+              </p>
+              {isChangingEmail && (
+                <p className="text-xs text-amber-600">Obrigatório ao alterar e-mail</p>
+              )}
+            </div>
             <div className="space-y-1.5">
               <Label>{t.nav.profile_current_password}</Label>
               <div className="relative">

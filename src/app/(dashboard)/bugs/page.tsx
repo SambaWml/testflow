@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useSession } from "next-auth/react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Bug, Plus, Trash2, Pencil, Eye, MoreHorizontal, Wand2, Search,
+  Bug, Plus, Trash2, Pencil, Wand2, Search,
   ChevronDown, AlertTriangle, Loader2, X, ExternalLink, Copy, Check,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -19,13 +19,11 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import {
-  DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
+import { useTerms } from "@/contexts/terms-context";
 
 /* ─── Types ──────────────────────────────────────────────────────────── */
 type BugItem = {
@@ -92,6 +90,45 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
+// Inline select that looks like a badge — used directly in table cells
+function InlinePrioritySelect({ bugId, value, onChange }: { bugId: string; value: string; onChange: (id: string, field: string, val: string) => void }) {
+  return (
+    <div className="relative inline-flex">
+      <select
+        value={value}
+        onChange={(e) => onChange(bugId, "priority", e.target.value)}
+        className={cn(
+          "appearance-none cursor-pointer rounded border text-xs font-medium px-2 py-0.5 pr-5 transition-colors",
+          PRIORITY_STYLES[value] ?? "bg-muted text-muted-foreground",
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {PRIORITIES.map((p) => <option key={p.value} value={p.value}>{p.label}</option>)}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 opacity-60" />
+    </div>
+  );
+}
+
+function InlineStatusSelect({ bugId, value, onChange }: { bugId: string; value: string; onChange: (id: string, field: string, val: string) => void }) {
+  return (
+    <div className="relative inline-flex">
+      <select
+        value={value}
+        onChange={(e) => onChange(bugId, "status", e.target.value)}
+        className={cn(
+          "appearance-none cursor-pointer rounded border text-xs font-medium px-2 py-0.5 pr-5 transition-colors",
+          STATUS_STYLES[value] ?? "bg-muted text-muted-foreground",
+        )}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {BUG_STATUSES.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+      </select>
+      <ChevronDown className="pointer-events-none absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 opacity-60" />
+    </div>
+  );
+}
+
 /* ─── Skeleton ───────────────────────────────────────────────────────── */
 function SkeletonRow() {
   return (
@@ -101,7 +138,7 @@ function SkeletonRow() {
           <div className={`h-3.5 rounded bg-muted animate-pulse w-${w}`} />
         </td>
       ))}
-      <td className="px-4 py-3.5 w-10" />
+      <td className="px-4 py-3.5 w-28" />
     </tr>
   );
 }
@@ -392,6 +429,7 @@ function DeleteDialog({ bug, onClose }: { bug: BugItem; onClose: () => void }) {
 
 /* ─── Page ───────────────────────────────────────────────────────────── */
 export default function BugsPage() {
+  const { terms } = useTerms();
   // All authenticated org members can create and manage bugs
   const { data: session } = useSession();
   const myRole = (session?.user as { orgRole?: string })?.orgRole ?? "";
@@ -404,14 +442,36 @@ export default function BugsPage() {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editBug, setEditBug] = useState<BugItem | null>(null);
-  const [viewBug, setViewBug] = useState<BugItem | null>(null);
   const [deleteBug, setDeleteBug] = useState<BugItem | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const params = new URLSearchParams();
   if (search) params.set("q", search);
   if (filterProject !== "all") params.set("projectId", filterProject);
   if (filterPriority !== "all") params.set("priority", filterPriority);
   if (filterStatus !== "all") params.set("status", filterStatus);
+
+  const qc = useQueryClient();
+
+  const updateField = useMutation({
+    mutationFn: ({ id, field, value }: { id: string; field: string; value: string }) =>
+      fetch(`/api/items/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [field]: value }),
+      }).then((r) => r.json()),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["bugs"] }),
+  });
+
+  function handleFieldChange(id: string, field: string, value: string) {
+    updateField.mutate({ id, field, value });
+  }
+
+  function copyMd(bug: BugItem) {
+    navigator.clipboard.writeText(bugToMarkdown(bug));
+    setCopiedId(bug.id);
+    setTimeout(() => setCopiedId(null), 2000);
+  }
 
   const { data, isLoading } = useQuery<{ bugs: BugItem[] }>({
     queryKey: ["bugs", search, filterProject, filterPriority, filterStatus],
@@ -435,8 +495,8 @@ export default function BugsPage() {
   return (
     <div className="flex flex-col h-full">
       <Topbar
-        title="Bugs"
-        subtitle="Gerencie e acompanhe os bugs do sistema"
+        title={terms.bug.plural}
+        subtitle={`Gerencie e acompanhe os ${terms.bug.plural.toLowerCase()} do sistema`}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" asChild>
@@ -446,7 +506,7 @@ export default function BugsPage() {
             </Button>
             {canCreate && (
               <Button size="sm" onClick={() => setCreateOpen(true)} className="gap-1.5">
-                <Plus className="h-3.5 w-3.5" /> Novo bug
+                <Plus className="h-3.5 w-3.5" /> Novo {terms.bug.singular.toLowerCase()}
               </Button>
             )}
           </div>
@@ -481,7 +541,7 @@ export default function BugsPage() {
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Buscar bugs..."
+              placeholder={`Buscar ${terms.bug.plural.toLowerCase()}...`}
               className="pl-9 h-9 text-sm"
             />
             {search && (
@@ -491,7 +551,7 @@ export default function BugsPage() {
             )}
           </div>
 
-          <FilterSelect label="Projeto" value={filterProject} onChange={setFilterProject}>
+          <FilterSelect label={terms.projeto.singular} value={filterProject} onChange={setFilterProject}>
             <option value="all">Todos os projetos</option>
             {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
           </FilterSelect>
@@ -520,7 +580,7 @@ export default function BugsPage() {
               <thead>
                 <tr className="border-b border-border/60 bg-muted/30">
                   {["Título", "Projeto", "Prioridade", "Status", "Autor", "Criado em", ""].map((col, i) => (
-                    <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap", i === 6 && "w-10")}>
+                    <th key={i} className={cn("px-4 py-3 text-left text-[11px] font-semibold uppercase tracking-wider text-muted-foreground whitespace-nowrap", i === 6 && "w-28")}>
                       {col}
                     </th>
                   ))}
@@ -566,7 +626,7 @@ export default function BugsPage() {
                       <td className="px-4 py-3.5 max-w-[300px]">
                         <button
                           className="text-left font-medium text-foreground hover:text-primary transition-colors truncate block max-w-full"
-                          onClick={() => setViewBug(bug)}
+                          onClick={() => setEditBug(bug)}
                         >
                           {bug.title}
                         </button>
@@ -578,13 +638,13 @@ export default function BugsPage() {
                       <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
                         {bug.project.name}
                       </td>
-                      {/* Priority */}
+                      {/* Priority — inline editable */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <PriorityBadge priority={bug.priority} />
+                        <InlinePrioritySelect bugId={bug.id} value={bug.priority} onChange={handleFieldChange} />
                       </td>
-                      {/* Status */}
+                      {/* Status — inline editable */}
                       <td className="px-4 py-3.5 whitespace-nowrap">
-                        <StatusBadge status={bug.status} />
+                        <InlineStatusSelect bugId={bug.id} value={bug.status} onChange={handleFieldChange} />
                       </td>
                       {/* Author */}
                       <td className="px-4 py-3.5 text-muted-foreground text-xs whitespace-nowrap">
@@ -596,32 +656,31 @@ export default function BugsPage() {
                       </td>
                       {/* Actions */}
                       <td className="px-4 py-3.5">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <button className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end" className="w-40">
-                            <DropdownMenuItem onClick={() => setViewBug(bug)}>
-                              <Eye className="h-3.5 w-3.5 mr-2" /> Visualizar
-                            </DropdownMenuItem>
-                            {canCreate && (
-                              <>
-                                <DropdownMenuItem onClick={() => setEditBug(bug)}>
-                                  <Pencil className="h-3.5 w-3.5 mr-2" /> Editar
-                                </DropdownMenuItem>
-                                <DropdownMenuSeparator />
-                                <DropdownMenuItem
-                                  className="text-destructive focus:text-destructive"
-                                  onClick={() => setDeleteBug(bug)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 mr-2" /> Excluir
-                                </DropdownMenuItem>
-                              </>
-                            )}
-                          </DropdownMenuContent>
-                        </DropdownMenu>
+                        <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => setEditBug(bug)}
+                            title="Editar"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => setDeleteBug(bug)}
+                            title="Excluir"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
+                          <button
+                            onClick={() => copyMd(bug)}
+                            title="Copiar Markdown"
+                            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                          >
+                            {copiedId === bug.id
+                              ? <Check className="h-3.5 w-3.5 text-green-600" />
+                              : <Copy className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -647,7 +706,6 @@ export default function BugsPage() {
       {/* Modals */}
       {createOpen && <BugFormDialog projects={projects} onClose={() => setCreateOpen(false)} />}
       {editBug && <BugFormDialog bug={editBug} projects={projects} onClose={() => setEditBug(null)} />}
-      {viewBug && <BugDetailDialog bug={viewBug} onClose={() => setViewBug(null)} />}
       {deleteBug && <DeleteDialog bug={deleteBug} onClose={() => setDeleteBug(null)} />}
     </div>
   );

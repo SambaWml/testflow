@@ -23,6 +23,7 @@ model Organization {
 
   roleNames           String  @default("{\"OWNER\":\"Owner\",\"ADMIN\":\"Admin\",\"MEMBER\":\"Membro\"}")
   overviewEnabled     Boolean @default(true)
+  overviewName        String  @default("Visão Geral")
   qaDashboardEnabled  Boolean @default(true)
   qaDashboardName     String  @default("Dashboard QA")
 

@@ -23,12 +23,10 @@ import {
   History, Bug, Plus, ClipboardList, ArrowLeft, Flag,
 } from "lucide-react";
 import { getExecStatuses, getPriorities } from "@/lib/enum-config";
-import { getTerms } from "@/lib/term-config";
+import { useTerms } from "@/contexts/terms-context";
 
 const EXECUTION_STATUSES = getExecStatuses();
 const PRIORITIES = getPriorities();
-// Module-level terms for sub-components (resolved once on page load)
-const T = typeof window !== "undefined" ? getTerms() : null;
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -83,8 +81,7 @@ const PRIORITY_COLORS: Record<string, string> = {
 /* ── Page ────────────────────────────────────────────────────────── */
 export default function ExecutionsPage() {
   const { t } = useLang();
-  const [terms, setTerms] = useState(() => getTerms());
-  useEffect(() => { setTerms(getTerms()); }, []);
+  const { terms } = useTerms();
   return (
     <div className="flex flex-col h-full">
       <Topbar title={terms.execucao.plural} subtitle={t.executions.subtitle} />
@@ -133,7 +130,7 @@ function RunTab() {
 function PlanListView({ onNew, onRun }: { onNew: () => void; onRun: (id: string) => void }) {
   const qc = useQueryClient();
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
 
   const { data, isLoading } = useQuery({
     queryKey: ["test-plans-pending"],
@@ -251,7 +248,7 @@ function PlanListView({ onNew, onRun }: { onNew: () => void; onRun: (id: string)
 function CreatePlanView({ onBack, onCreate }: { onBack: () => void; onCreate: () => void }) {
   const qc = useQueryClient();
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const [name, setName] = useState("");
   const [projectId, setProjectId] = useState("");
   const [environment, setEnvironment] = useState("");
@@ -422,7 +419,7 @@ const emptyDraft = (): CaseDraft => ({ status: "NOT_EXECUTED", notes: "", bugRef
 function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => void }) {
   const qc = useQueryClient();
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const [activeIdx, setActiveIdx] = useState(0);
   // Per-case draft storage: caseId → draft values
   const [drafts, setDrafts] = useState<Record<string, CaseDraft>>({});
@@ -430,6 +427,7 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
   const [finishDialog, setFinishDialog] = useState(false);
   const [planResult, setPlanResult] = useState("PASS");
   const [planNotes, setPlanNotes] = useState("");
+  const [removeItemId, setRemoveItemId] = useState<string | null>(null);
 
   const { data, refetch } = useQuery({
     queryKey: ["test-plan", planId],
@@ -475,6 +473,20 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
       qc.invalidateQueries({ queryKey: ["test-plans-pending"] });
       qc.invalidateQueries({ queryKey: ["test-plans-history"] });
       onDone();
+    },
+  });
+
+  const removeCaseMutation = useMutation({
+    mutationFn: (itemId: string) =>
+      fetch(`/api/test-plans/${planId}/items/${itemId}`, { method: "DELETE" }).then((r) => r.json()),
+    onSuccess: async (_, itemId) => {
+      setRemoveItemId(null);
+      // Move active index back if needed to avoid going out of bounds
+      const removedIdx = cases.findIndex((c) => c.id === itemId);
+      if (removedIdx !== -1 && activeIdx >= removedIdx && activeIdx > 0) {
+        setActiveIdx((i) => i - 1);
+      }
+      await refetch();
     },
   });
 
@@ -580,18 +592,29 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
               const Icon = STATUS_ICONS[exec?.status ?? "NOT_EXECUTED"];
               const isActive = i === activeIdx;
               return (
-                <button
+                <div
                   key={item.id}
-                  onClick={() => navigateTo(i)}
-                  className={`w-full text-left flex items-start gap-2 p-2.5 rounded-md transition-colors ${isActive ? "bg-primary/10 border border-primary/30" : "hover:bg-accent"}`}
+                  className={`group flex items-start gap-2 p-2.5 rounded-md transition-colors ${isActive ? "bg-primary/10 border border-primary/30" : "hover:bg-accent"}`}
                 >
-                  <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${exec ? STATUS_COLORS[exec.status].split(" ")[0] : "text-muted-foreground"}`} />
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-medium leading-snug line-clamp-2">{item.case.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{item.case.format}</p>
-                  </div>
-                  {isActive && <ChevronRight className="h-3 w-3 ml-auto text-primary shrink-0 mt-0.5" />}
-                </button>
+                  <button
+                    onClick={() => navigateTo(i)}
+                    className="flex items-start gap-2 flex-1 min-w-0 text-left"
+                  >
+                    <Icon className={`h-4 w-4 mt-0.5 shrink-0 ${exec ? STATUS_COLORS[exec.status].split(" ")[0] : "text-muted-foreground"}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium leading-snug line-clamp-2">{item.case.title}</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">{item.case.format}</p>
+                    </div>
+                    {isActive && <ChevronRight className="h-3 w-3 text-primary shrink-0 mt-0.5" />}
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setRemoveItemId(item.id); }}
+                    className="shrink-0 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-red-600"
+                    title="Remover do plano"
+                  >
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                </div>
               );
             })}
           </div>
@@ -748,6 +771,42 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
         )}
       </div>
 
+      {/* Remove case dialog */}
+      {removeItemId && (() => {
+        const item = cases.find((c) => c.id === removeItemId);
+        const hasExec = !!plan.executions.find((e) => e.caseId === item?.case.id);
+        return (
+          <Dialog open onOpenChange={() => setRemoveItemId(null)}>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2 text-destructive">
+                  <Trash2 className="h-4 w-4" /> Remover do plano
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-2 text-sm text-muted-foreground">
+                <p>Remover <strong className="text-foreground">{item?.case.title}</strong> deste plano?</p>
+                {hasExec && (
+                  <p className="text-amber-700 bg-amber-50 border border-amber-200 rounded-md px-3 py-2 text-xs">
+                    O resultado já registrado para este caso também será removido.
+                  </p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setRemoveItemId(null)}>Cancelar</Button>
+                <Button
+                  variant="destructive"
+                  disabled={removeCaseMutation.isPending}
+                  onClick={() => removeCaseMutation.mutate(removeItemId)}
+                >
+                  {removeCaseMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                  Remover
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        );
+      })()}
+
       {/* Finish dialog */}
       <Dialog open={finishDialog} onOpenChange={setFinishDialog}>
         <DialogContent>
@@ -801,7 +860,7 @@ function ExecutePlanView({ planId, onDone }: { planId: string; onDone: () => voi
 function HistoryTab() {
   const qc = useQueryClient();
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const [search, setSearch] = useState("");
   const [filters, setFilters] = useState<Record<string, string[]>>({ project: [], result: [] });
   const [expandedPlans, setExpandedPlans] = useState<Set<string>>(new Set());

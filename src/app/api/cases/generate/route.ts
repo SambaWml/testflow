@@ -75,9 +75,26 @@ export async function POST(req: Request) {
       }
     }
 
+    if (aiConfig.activeProvider === "claude" && aiConfig.claude.apiKey) {
+      try {
+        return await generateWithClaude({
+          ...options,
+          model: aiConfig.claude.model,
+          apiKey: aiConfig.claude.apiKey,
+        });
+      } catch (err) {
+        console.error("Claude failed:", err);
+        return NextResponse.json({
+          error: `Claude falhou: ${String(err)}`,
+          hint: "Verifique se a API Key da Anthropic está correta.",
+          provider: "claude",
+        }, { status: 503 });
+      }
+    }
+
     return NextResponse.json({
       error: "Nenhum provedor de IA configurado.",
-      hint: "Configure um provedor em Configurações → Provedor de IA.",
+      hint: "Configure um provedor em Painel Admin → Configuração IA.",
       provider: "none",
     }, { status: 503 });
   } catch (error) {
@@ -434,6 +451,42 @@ async function generateWithLLM({
     console.error("Erro ao gerar casos:", err);
     throw err;
   }
+}
+
+// ─── Claude (Anthropic) ─────────────────────────────────────────────────────
+
+async function generateWithClaude({
+  context, quantity, format, language, coverageLevel, testType, model, apiKey,
+}: {
+  context: string; quantity: number; format: string; language: string;
+  coverageLevel: string; testType: string; model: string; apiKey: string;
+}) {
+  const prompt = buildPrompt({ context, quantity, format, language, coverageLevel, testType });
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Anthropic API erro (${response.status}): ${err}`);
+  }
+
+  const data = await response.json();
+  const raw = data.content?.[0]?.text ?? "{}";
+  const result = parseAndNormalize(raw, format);
+  const body = await result.json();
+  return NextResponse.json({ ...body, model, provider: "claude" });
 }
 
 function generateMock({ context, quantity, format }: { context: string; quantity: number; format: string }) {

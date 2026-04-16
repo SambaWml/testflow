@@ -5,6 +5,7 @@ import { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { LangProvider } from "@/contexts/lang-context";
+import { TermsProvider } from "@/contexts/terms-context";
 import { ThemeProvider } from "@/contexts/theme-context";
 
 export function Providers({ children }: { children: React.ReactNode }) {
@@ -19,11 +20,13 @@ export function Providers({ children }: { children: React.ReactNode }) {
     <SessionProvider>
       <ThemeProvider>
         <LangProvider>
-          <QueryClientProvider client={queryClient}>
-            <TooltipProvider delayDuration={300}>
-              {children}
-            </TooltipProvider>
-          </QueryClientProvider>
+          <TermsProvider>
+            <QueryClientProvider client={queryClient}>
+              <TooltipProvider delayDuration={300}>
+                {children}
+              </TooltipProvider>
+            </QueryClientProvider>
+          </TermsProvider>
         </LangProvider>
       </ThemeProvider>
     </SessionProvider>

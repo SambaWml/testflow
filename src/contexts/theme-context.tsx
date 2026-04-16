@@ -12,10 +12,14 @@ interface ThemeContextValue {
 const ThemeContext = createContext<ThemeContextValue>({ theme: "light", toggleTheme: () => {} });
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setTheme] = useState<Theme>(() => {
-    if (typeof window === "undefined") return "light";
-    return (localStorage.getItem("testflow_theme") as Theme) ?? "light";
-  });
+  // Always start with "light" so server and client render the same initial HTML.
+  // After mount, read localStorage and apply the stored preference.
+  const [theme, setTheme] = useState<Theme>("light");
+
+  useEffect(() => {
+    const stored = (localStorage.getItem("testflow_theme") as Theme) ?? "light";
+    if (stored !== "light") setTheme(stored);
+  }, []);
 
   // Keep <html> class in sync whenever theme changes
   useEffect(() => {

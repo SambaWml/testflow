@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { signOut } from "next-auth/react";
-import { FlaskConical, Building2, LogOut, Sun, Moon } from "lucide-react";
+import { FlaskConical, Building2, LogOut, Sun, Moon, Cpu, ShieldCheck } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -35,6 +35,28 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
           >
             <Building2 className="h-4 w-4 shrink-0" />
             <span>Organizações</span>
+          </Link>
+          <Link
+            href="/admin/admins"
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              pathname.startsWith("/admin/admins")
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <ShieldCheck className="h-4 w-4 shrink-0" />
+            <span>Super Admins</span>
+          </Link>
+          <Link
+            href="/admin/ai"
+            className={`flex items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors ${
+              pathname.startsWith("/admin/ai")
+                ? "bg-accent text-foreground"
+                : "text-muted-foreground hover:bg-accent hover:text-foreground"
+            }`}
+          >
+            <Cpu className="h-4 w-4 shrink-0" />
+            <span>Configuração IA</span>
           </Link>
         </nav>
 

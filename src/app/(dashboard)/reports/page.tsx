@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTerms } from "@/lib/term-config";
 import { useLang } from "@/contexts/lang-context";
+import { useTerms } from "@/contexts/terms-context";
 import { Topbar } from "@/components/layout/topbar";
 import { HintIcon } from "@/components/ui/hint";
 import { Button } from "@/components/ui/button";
@@ -52,7 +52,7 @@ function buildMarkdown(
       };
     }[];
   },
-  terms: ReturnType<typeof getTerms>,
+  terms: import("@/lib/term-config").Terms,
   t: import("@/lib/i18n").Translation,
   lang: import("@/lib/i18n").Lang,
 ) {
@@ -167,8 +167,7 @@ interface TestPlanOption {
 export default function ReportsPage() {
   const qc = useQueryClient();
   const { t, lang } = useLang();
-  const [terms, setTerms] = useState(() => getTerms());
-  useEffect(() => { setTerms(getTerms()); }, []);
+  const { terms } = useTerms();
   const [buildingReport, setBuildingReport] = useState(false);
   const [viewingReport, setViewingReport] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
@@ -484,7 +483,7 @@ function ReportView({ report }: { report: {
   }[];
 } }) {
   const { t, lang } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const locale = lang === "pt-BR" ? ptBR : undefined;
 

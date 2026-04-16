@@ -12,6 +12,7 @@ export async function GET() {
   if (!u.orgId) {
     return NextResponse.json({
       overviewEnabled: true,
+      overviewName: "Visão Geral",
       qaDashboardEnabled: true,
       qaDashboardName: "Dashboard QA",
     });
@@ -19,11 +20,12 @@ export async function GET() {
 
   const org = await prisma.organization.findUnique({
     where: { id: u.orgId },
-    select: { overviewEnabled: true, qaDashboardEnabled: true, qaDashboardName: true },
+    select: { overviewEnabled: true, overviewName: true, qaDashboardEnabled: true, qaDashboardName: true },
   });
 
   return NextResponse.json({
     overviewEnabled: org?.overviewEnabled ?? true,
+    overviewName: org?.overviewName ?? "Visão Geral",
     qaDashboardEnabled: org?.qaDashboardEnabled ?? true,
     qaDashboardName: org?.qaDashboardName ?? "Dashboard QA",
   });
@@ -43,16 +45,21 @@ export async function PATCH(req: NextRequest) {
   const body = await req.json();
   const {
     overviewEnabled,
+    overviewName,
     qaDashboardEnabled,
     qaDashboardName,
   } = body as {
     overviewEnabled?: boolean;
+    overviewName?: string;
     qaDashboardEnabled?: boolean;
     qaDashboardName?: string;
   };
 
   const data: Record<string, unknown> = {};
   if (typeof overviewEnabled === "boolean") data.overviewEnabled = overviewEnabled;
+  if (typeof overviewName === "string" && overviewName.trim()) {
+    data.overviewName = overviewName.trim();
+  }
   if (typeof qaDashboardEnabled === "boolean") data.qaDashboardEnabled = qaDashboardEnabled;
   if (typeof qaDashboardName === "string" && qaDashboardName.trim()) {
     data.qaDashboardName = qaDashboardName.trim();
@@ -61,7 +68,7 @@ export async function PATCH(req: NextRequest) {
   const org = await prisma.organization.update({
     where: { id: u.orgId },
     data,
-    select: { overviewEnabled: true, qaDashboardEnabled: true, qaDashboardName: true },
+    select: { overviewEnabled: true, overviewName: true, qaDashboardEnabled: true, qaDashboardName: true },
   });
 
   return NextResponse.json(org);

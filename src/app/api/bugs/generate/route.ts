@@ -92,9 +92,25 @@ export async function POST(req: Request) {
       }
     }
 
+    if (aiConfig.activeProvider === "claude" && aiConfig.claude.apiKey) {
+      try {
+        return await generateWithClaude({
+          ...options,
+          model: aiConfig.claude.model,
+          apiKey: aiConfig.claude.apiKey,
+        });
+      } catch (err) {
+        console.error("Claude failed:", err);
+        return NextResponse.json({
+          error: `Claude falhou: ${String(err)}`,
+          hint: "Verifique se a API Key da Anthropic está correta.",
+        }, { status: 503 });
+      }
+    }
+
     return NextResponse.json({
       error: "Nenhum provedor de IA configurado.",
-      hint: "Configure um provedor em Configurações → Provedor de IA.",
+      hint: "Configure um provedor em Painel Admin → Configuração IA.",
     }, { status: 503 });
   } catch (error) {
     console.error("API bugs/generate error:", error);
@@ -434,5 +450,39 @@ async function generateWithLLM({
 
   const data = await response.json();
   const raw = data.choices?.[0]?.message?.content ?? "{}";
+  return parseAndNormalize(raw);
+}
+
+// ─── Claude (Anthropic) ─────────────────────────────────────────────────────
+
+async function generateWithClaude({
+  context, quantity, language, priority, bugCategory, model, apiKey,
+}: {
+  context: string; quantity: number; language: string; priority: string;
+  bugCategory: string; model: string; apiKey: string;
+}): Promise<NextResponse> {
+  const prompt = buildPrompt({ context, quantity, language, priority, bugCategory });
+
+  const response = await fetch("https://api.anthropic.com/v1/messages", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+    body: JSON.stringify({
+      model,
+      max_tokens: 8192,
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
+
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Anthropic API erro (${response.status}): ${err}`);
+  }
+
+  const data = await response.json();
+  const raw = data.content?.[0]?.text ?? "{}";
   return parseAndNormalize(raw);
 }

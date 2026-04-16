@@ -27,6 +27,9 @@ if (process.env.DEPLOY_ENV === "production") {
 
 export default defineConfig({
   schema: "prisma/schema.prisma",
+  datasource: {
+    url: process.env.DIRECT_URL ?? process.env.DATABASE_URL ?? "",
+  },
   migrations: {
     path: "prisma/migrations",
     seed: "npx ts-node --compiler-options '{\"module\":\"CommonJS\"}' ./prisma/seed.ts",

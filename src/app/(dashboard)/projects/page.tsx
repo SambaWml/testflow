@@ -1,9 +1,9 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { getTerms } from "@/lib/term-config";
 import { useLang } from "@/contexts/lang-context";
+import { useTerms } from "@/contexts/terms-context";
 import { Topbar } from "@/components/layout/topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -44,8 +44,7 @@ export default function ProjectsPage() {
   const qc = useQueryClient();
   const { t, lang } = useLang();
   const [search, setSearch] = useState("");
-  const [terms, setTerms] = useState(() => getTerms());
-  useEffect(() => { setTerms(getTerms()); }, []);
+  const { terms } = useTerms();
   const [expandedProjects, setExpandedProjects] = useState<Set<string>>(new Set());
   const [itemTypeFilter, setItemTypeFilter] = useState<Record<string, string>>({});
   const [itemDialogOpen, setItemDialogOpen] = useState(false);
@@ -182,7 +181,7 @@ function ProjectCard({
   lang: string;
 }) {
   const { t } = useLang();
-  const terms = getTerms();
+  const { terms } = useTerms();
   const [activeTab, setActiveTab] = useState<"items" | "cases">("items");
   const [editingCaseId, setEditingCaseId] = useState<string | null>(null);
 

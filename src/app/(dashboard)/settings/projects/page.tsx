@@ -20,6 +20,7 @@ import {
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Topbar } from "@/components/layout/topbar";
+import { useTerms } from "@/contexts/terms-context";
 
 type Project = {
   id: string;
@@ -133,6 +134,7 @@ function DeleteProjectDialog({
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const { terms } = useTerms();
   const [error, setError] = useState<string | null>(null);
 
   const del = useMutation({
@@ -170,10 +172,10 @@ function DeleteProjectDialog({
             <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-1.5">
               <p className="text-xs font-semibold text-destructive mb-1">Dados que serão removidos:</p>
               {[
-                { label: "Itens", count: c.items },
-                { label: "Casos de teste", count: c.cases },
-                { label: "Planos de teste", count: c.testPlans },
-                { label: "Execuções", count: c.executions },
+                { label: terms.item.plural, count: c.items },
+                { label: terms.casoDeTeste.plural, count: c.cases },
+                { label: terms.planoDeTeste.plural, count: c.testPlans },
+                { label: terms.execucao.plural, count: c.executions },
               ].filter((r) => r.count > 0).map(({ label, count }) => (
                 <div key={label} className="flex justify-between text-sm">
                   <span className="text-muted-foreground">{label}</span>
