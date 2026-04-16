@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Cpu, Check, Loader2, Eye, EyeOff, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,14 +68,16 @@ export default function AdminAIPage() {
 
   const { data: config, isLoading } = useQuery<AIConfig>({
     queryKey: ["ai-config"],
-    queryFn: () => fetch("/api/settings/ai").then((r) => r.json()),
-    onSuccess: (d) => {
-      setActiveProvider(d.activeProvider);
-      setOpenaiModel(d.openai.model);
-      setManusBaseUrl(d.manus.baseUrl);
-      setClaudeModel(d.claude.model);
-    },
-  } as Parameters<typeof useQuery>[0]);
+    queryFn: (): Promise<AIConfig> => fetch("/api/settings/ai").then((r) => r.json()),
+  });
+
+  useEffect(() => {
+    if (!config) return;
+    setActiveProvider(config.activeProvider);
+    setOpenaiModel(config.openai.model);
+    setManusBaseUrl(config.manus.baseUrl);
+    setClaudeModel(config.claude.model);
+  }, [config]);
 
   const { mutate: save, isPending } = useMutation({
     mutationFn: (body: object) =>
