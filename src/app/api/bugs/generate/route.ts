@@ -360,6 +360,12 @@ function extractBugsDeep(value: unknown, depth = 0): NextResponse | null {
 
   // String — try to parse as JSON
   if (typeof value === "string" && value.trim().length > 20) {
+    // Try raw parse first — sanitizeJSON can corrupt valid JSON with Portuguese text/apostrophes
+    try {
+      const parsed = JSON.parse(value);
+      const r = extractBugsDeep(parsed, depth + 1);
+      if (r) return r;
+    } catch { /* not valid JSON */ }
     try {
       const parsed = JSON.parse(sanitizeJSON(value));
       const r = extractBugsDeep(parsed, depth + 1);
@@ -410,7 +416,7 @@ async function generateWithManus({
       const found = extractBugsDeep(data);
       if (found) return found;
 
-      throw new Error(`Não foi possível extrair bugs do response da Manus. Preview: ${JSON.stringify(data).slice(0, 300)}`);
+      throw new Error(`Não foi possível extrair bugs do response da Manus. Campos: ${Object.keys(data).join(", ")}. Preview: ${JSON.stringify(data).slice(0, 1000)}`);
     }
   }
   throw new Error("Manus task excedeu o tempo limite de 5 minutos.");
