@@ -132,6 +132,8 @@ export async function POST(req: NextRequest) {
     user: { id: result!.id, name: result!.name, email: result!.email },
     isNewUser,
     emailSent,
-    ...(isNewUser && !emailSent ? { tempPassword } : {}),
+    // Only expose temp password when email failed — requires admin to manually inform user
+    // Never log this value; only return it once in the direct API response
+    ...(isNewUser && !emailSent ? { tempPassword, warning: "E-mail não enviado. Informe a senha ao usuário por canal seguro e solicite que ele a altere no primeiro acesso." } : {}),
   });
 }

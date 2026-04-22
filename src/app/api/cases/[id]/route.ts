@@ -1,10 +1,24 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
+import { auth } from "@/lib/auth";
+import { sessionUser } from "@/lib/permissions";
 
-export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {
+type Params = { params: Promise<{ id: string }> };
+
+async function resolveCase(id: string, orgId: string | null, isSuperAdmin: boolean) {
+  const where = isSuperAdmin ? { id } : { id, project: { organizationId: orgId! } };
+  return prisma.testCase.findFirst({ where });
+}
+
+export async function GET(_: Request, { params }: Params) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const u = sessionUser(session.user);
+  if (!u.isSuperAdmin && !u.orgId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
-  const tc = await prisma.testCase.findUnique({
-    where: { id },
+  const tc = await prisma.testCase.findFirst({
+    where: u.isSuperAdmin ? { id } : { id, project: { organizationId: u.orgId! } },
     include: {
       steps: { orderBy: { order: "asc" } },
       item: { select: { title: true, reference: true } },
@@ -15,8 +29,16 @@ export async function GET(_: Request, { params }: { params: Promise<{ id: string
   return NextResponse.json(tc);
 }
 
-export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function PATCH(req: Request, { params }: Params) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const u = sessionUser(session.user);
+  if (!u.isSuperAdmin && !u.orgId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
+  const existing = await resolveCase(id, u.orgId, u.isSuperAdmin);
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   const body = await req.json();
 
   const tc = await prisma.$transaction(async (tx) => {
@@ -58,8 +80,16 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   return NextResponse.json({ tc });
 }
 
-export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
+export async function DELETE(_: Request, { params }: Params) {
+  const session = await auth();
+  if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  const u = sessionUser(session.user);
+  if (!u.isSuperAdmin && !u.orgId) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
   const { id } = await params;
+  const existing = await resolveCase(id, u.orgId, u.isSuperAdmin);
+  if (!existing) return NextResponse.json({ error: "Not found" }, { status: 404 });
+
   await prisma.testCase.update({ where: { id }, data: { isActive: false } });
   return NextResponse.json({ ok: true });
 }
