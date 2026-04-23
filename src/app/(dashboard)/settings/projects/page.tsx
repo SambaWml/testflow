@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useSession } from "next-auth/react";
 import {
-  FolderCog, Users, ChevronDown, ChevronUp, Plus, Trash2,
+  Users, ChevronDown, ChevronUp, Plus, Trash2,
   Pencil, Power, PowerOff, AlertTriangle, Loader2, FolderOpen,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";

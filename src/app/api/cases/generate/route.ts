@@ -215,7 +215,6 @@ async function generateWithManus({
         return parseAndNormalize(text, format);
       }
 
-      const allStr = JSON.stringify(data);
       throw new Error(`Manus não retornou JSON com casos de teste. Campos: ${Object.keys(data).join(", ")}. output preview: ${deepText(data.output).slice(0, 300)}`);
     }
   }
@@ -493,33 +492,3 @@ async function generateWithClaude({
   return NextResponse.json({ ...body, model, provider: "claude" });
 }
 
-function generateMock({ context, quantity, format }: { context: string; quantity: number; format: string }) {
-  const title = context.split("\n")[0]?.replace("Título: ", "") || "Funcionalidade";
-  return Array.from({ length: quantity }, (_, i) => {
-    if (format === "BDD") {
-      return {
-        title: `CT-${String(i + 1).padStart(3, "0")} - ${title} - Cenário ${i + 1}`,
-        precondition: i === 0 ? "Usuário autenticado no sistema" : null,
-        priority: i === 0 ? "HIGH" : i < Math.ceil(quantity / 2) ? "MEDIUM" : "LOW",
-        format: "BDD",
-        bddGiven: `O usuário está na tela de ${title.toLowerCase()}`,
-        bddWhen: `O usuário realiza a ação ${i + 1} em ${title.toLowerCase()}`,
-        bddThen: `O sistema deve exibir o resultado esperado para o cenário ${i + 1}`,
-      };
-    } else {
-      return {
-        title: `CT-${String(i + 1).padStart(3, "0")} - ${title} - Passo a Passo ${i + 1}`,
-        precondition: i === 0 ? "Usuário autenticado no sistema" : null,
-        priority: i === 0 ? "HIGH" : i < Math.ceil(quantity / 2) ? "MEDIUM" : "LOW",
-        format: "STEP_BY_STEP",
-        steps: [
-          { order: 1, description: `Acessar a funcionalidade de ${title.toLowerCase()}` },
-          { order: 2, description: `Executar a ação ${i + 1}` },
-          { order: 3, description: `Verificar o resultado` },
-        ],
-        expectedResult: `O sistema exibe o resultado esperado corretamente para o cenário ${i + 1}`,
-        notes: null,
-      };
-    }
-  });
-}

@@ -58,6 +58,7 @@ export function ItemFormDialog({ open, onOpenChange, editId, defaultProjectId }:
     defaultValues: { type: "USER_STORY", priority: "MEDIUM", projectId: "" },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const projectId = watch("projectId");
 
   const { data: modules } = useQuery({

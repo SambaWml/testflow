@@ -69,7 +69,7 @@ async function main() {
     },
   });
 
-  const module = await prisma.module.upsert({
+  const demoModule = await prisma.module.upsert({
     where: { projectId_name: { projectId: project.id, name: "Autenticação" } },
     update: {},
     create: {
@@ -89,7 +89,7 @@ async function main() {
       type: "USER_STORY",
       priority: "HIGH",
       projectId: project.id,
-      moduleId: module.id,
+      moduleId: demoModule.id,
       organizationId: org.id,
       reference: "US-001",
       acceptanceCriteria:
@@ -108,7 +108,7 @@ async function main() {
       precondition: "Usuário cadastrado no sistema com email e senha",
       priority: "HIGH",
       projectId: project.id,
-      moduleId: module.id,
+      moduleId: demoModule.id,
       itemId: item.id,
       organizationId: org.id,
       authorId: adminUser.id,
@@ -128,7 +128,7 @@ async function main() {
       precondition: "Usuário cadastrado no sistema",
       priority: "HIGH",
       projectId: project.id,
-      moduleId: module.id,
+      moduleId: demoModule.id,
       itemId: item.id,
       organizationId: org.id,
       authorId: adminUser.id,
@@ -148,7 +148,7 @@ async function main() {
       precondition: "Sistema em execução, usuário cadastrado",
       priority: "MEDIUM",
       projectId: project.id,
-      moduleId: module.id,
+      moduleId: demoModule.id,
       itemId: item.id,
       organizationId: org.id,
       authorId: adminUser.id,

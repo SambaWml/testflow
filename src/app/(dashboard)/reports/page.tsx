@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useLang } from "@/contexts/lang-context";
 import { useTerms } from "@/contexts/terms-context";
@@ -19,7 +19,7 @@ import {
   BarChart3, Plus, Download, Trash2, CheckCircle2, XCircle,
   Loader2, Eye, Calendar, Copy, Check,
 } from "lucide-react";
-import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from "recharts";
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -230,18 +230,6 @@ export default function ReportsPage() {
   }
 
   const reportsList = reports?.reports ?? [];
-
-  const computeStats = (items: { execution: { status: string } }[]) => {
-    const counts: Record<string, number> = {};
-    items.forEach(({ execution: ex }) => {
-      counts[ex.status] = (counts[ex.status] ?? 0) + 1;
-    });
-    const total = items.length;
-    const pass = counts.PASS ?? 0;
-    const executed = total - (counts.NOT_EXECUTED ?? 0) - (counts.SKIPPED ?? 0);
-    const passRate = executed > 0 ? Math.round((pass / executed) * 100) : 0;
-    return { counts, total, passRate };
-  };
 
   return (
     <div className="flex flex-col h-full">

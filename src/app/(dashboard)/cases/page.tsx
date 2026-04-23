@@ -37,7 +37,7 @@ type TestCase = {
 
 export default function CasesPage() {
   const qc = useQueryClient();
-  const { t, lang } = useLang();
+  const { t } = useLang();
   const { terms } = useTerms();
   const [editingCase, setEditingCase] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
@@ -74,7 +74,7 @@ export default function CasesPage() {
   const toggleSelect = (id: string) => {
     setSelected((prev) => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
   };
@@ -98,10 +98,9 @@ export default function CasesPage() {
     }
   }
 
-  const allCases: TestCase[] = data?.cases ?? [];
-
   // Filtro client-side
   const cases = useMemo(() => {
+    const allCases: TestCase[] = data?.cases ?? [];
     return allCases.filter((tc) => {
       if (search.trim()) {
         const q = search.toLowerCase();
@@ -113,7 +112,7 @@ export default function CasesPage() {
       if (filters.priority.length && !filters.priority.includes(tc.priority)) return false;
       return true;
     });
-  }, [allCases, search, filters]);
+  }, [data?.cases, search, filters]);
 
   // Grupos de filtro
   const projects = (projectsData?.projects ?? []) as { id: string; name: string }[];
@@ -145,7 +144,7 @@ export default function CasesPage() {
   const toggleExpand = (id: string) => {
     setExpandedCards((prev) => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
   };

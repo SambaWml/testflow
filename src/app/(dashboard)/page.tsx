@@ -10,7 +10,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
-  FileText, TestTube2, Play, TrendingUp, CheckCircle2, XCircle, AlertTriangle, Clock,
+  FileText, TestTube2, Play, TrendingUp, CheckCircle2, XCircle, Clock,
   Wand2, ArrowRight, Bug, BarChart3, Users, FolderOpen, ChevronDown, ShieldOff, X,
 } from "lucide-react";
 import Link from "next/link";
@@ -93,7 +93,6 @@ export default function DashboardPage() {
   });
 
   const overviewEnabled = features?.overviewEnabled ?? true;
-  const overviewName = features?.overviewName ?? "Visão Geral";
   const qaDashboardEnabled = features?.qaDashboardEnabled ?? true;
   const qaDashboardName = features?.qaDashboardName ?? "Dashboard QA";
 
@@ -114,7 +113,6 @@ export default function DashboardPage() {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("qa");
     } else if (activeTab === "qa" && !qaDashboardEnabled && overviewEnabled) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("geral");
     }
   }, [overviewEnabled, qaDashboardEnabled, canAccessQA, activeTab]);

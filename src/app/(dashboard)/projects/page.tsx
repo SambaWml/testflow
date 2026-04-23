@@ -10,9 +10,6 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
-// Note: Dialog/Label kept for ItemFormDialog dependency chain
 import {
   Plus, Search, Wand2, Pencil, Trash2, ChevronDown, ChevronUp,
   FolderOpen, Folder, FileText, Bug, Zap, BookOpen, GitBranch, CheckSquare,
@@ -73,7 +70,7 @@ export default function ProjectsPage() {
   function toggleProject(id: string) {
     setExpandedProjects((prev) => {
       const n = new Set(prev);
-      n.has(id) ? n.delete(id) : n.add(id);
+      if (n.has(id)) n.delete(id); else n.add(id);
       return n;
     });
   }

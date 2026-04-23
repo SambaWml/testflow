@@ -18,7 +18,7 @@ import {
   COLOR_PRESETS,
   type ItemType, type Priority, type ExecStatus,
 } from "@/lib/enum-config";
-import { DEFAULT_TERMS, type Terms, type TermEntry } from "@/lib/term-config";
+import { type Terms, type TermEntry } from "@/lib/term-config";
 import { useTerms } from "@/contexts/terms-context";
 import { useLang } from "@/contexts/lang-context";
 

@@ -11,7 +11,6 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { Topbar } from "@/components/layout/topbar";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
@@ -71,24 +70,6 @@ const STATUS_STYLES: Record<string, string> = {
   CLOSED:      "bg-slate-100 text-slate-600 border-slate-200",
   BLOCKED:     "bg-purple-50 text-purple-700 border-purple-200",
 };
-
-function PriorityBadge({ priority }: { priority: string }) {
-  const label = PRIORITIES.find((p) => p.value === priority)?.label ?? priority;
-  return (
-    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border", PRIORITY_STYLES[priority] ?? "bg-muted text-muted-foreground")}>
-      {label}
-    </span>
-  );
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const label = BUG_STATUSES.find((s) => s.value === status)?.label ?? status;
-  return (
-    <span className={cn("inline-flex items-center px-2 py-0.5 rounded text-xs font-medium border", STATUS_STYLES[status] ?? "bg-muted text-muted-foreground")}>
-      {label}
-    </span>
-  );
-}
 
 // Inline select that looks like a badge — used directly in table cells
 function InlinePrioritySelect({ bugId, value, onChange }: { bugId: string; value: string; onChange: (id: string, field: string, val: string) => void }) {
@@ -314,86 +295,6 @@ function bugToMarkdown(bug: BugItem): string {
   lines.push("---");
   lines.push(`*Autor: ${bug.author.name} | Criado em: ${createdAt}*`);
   return lines.join("\n");
-}
-
-/* ─── Bug Detail Dialog ──────────────────────────────────────────────── */
-function BugDetailDialog({ bug, onClose }: { bug: BugItem; onClose: () => void }) {
-  const [copied, setCopied] = useState(false);
-
-  function copyMarkdown() {
-    navigator.clipboard.writeText(bugToMarkdown(bug));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  }
-
-  return (
-    <Dialog open onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-base leading-snug pr-8">
-            <Bug className="h-4 w-4 text-red-500 shrink-0" />
-            {bug.title}
-          </DialogTitle>
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <PriorityBadge priority={bug.priority} />
-            <StatusBadge status={bug.status} />
-            <span className="text-xs text-muted-foreground">{bug.project.name}</span>
-            {bug.reference && (
-              <span className="text-xs bg-muted px-2 py-0.5 rounded font-mono">{bug.reference}</span>
-            )}
-          </div>
-        </DialogHeader>
-
-        <div className="space-y-5 py-2">
-          {bug.description && (
-            <Section title="Descrição" content={bug.description} />
-          )}
-          {bug.acceptanceCriteria && (
-            <Section title="Passos para Reproduzir" content={bug.acceptanceCriteria} />
-          )}
-          {bug.notes && (
-            <Section title="Resultado Esperado / Atual / Observações" content={bug.notes} />
-          )}
-
-          <div className="grid grid-cols-2 gap-4 pt-2 border-t border-border/40 text-xs text-muted-foreground">
-            <div>
-              <p className="font-medium uppercase tracking-wide mb-0.5">Autor</p>
-              <p className="text-foreground">{bug.author.name}</p>
-            </div>
-            <div>
-              <p className="font-medium uppercase tracking-wide mb-0.5">Projeto</p>
-              <p className="text-foreground">{bug.project.name}</p>
-            </div>
-            <div>
-              <p className="font-medium uppercase tracking-wide mb-0.5">Criado em</p>
-              <p className="text-foreground">{format(new Date(bug.createdAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
-            </div>
-            <div>
-              <p className="font-medium uppercase tracking-wide mb-0.5">Atualizado em</p>
-              <p className="text-foreground">{format(new Date(bug.updatedAt), "dd/MM/yyyy HH:mm", { locale: ptBR })}</p>
-            </div>
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={copyMarkdown}>
-            {copied ? <Check className="h-4 w-4 mr-1.5 text-green-600" /> : <Copy className="h-4 w-4 mr-1.5" />}
-            {copied ? "Copiado!" : "Copiar MD"}
-          </Button>
-          <Button onClick={onClose}>Fechar</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
-
-function Section({ title, content }: { title: string; content: string }) {
-  return (
-    <div>
-      <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">{title}</p>
-      <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{content}</p>
-    </div>
-  );
 }
 
 /* ─── Delete dialog ──────────────────────────────────────────────────── */

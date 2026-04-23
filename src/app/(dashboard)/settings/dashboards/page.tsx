@@ -7,7 +7,7 @@ import { Topbar } from "@/components/layout/topbar";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { LayoutDashboard, Check, CheckCircle2, Loader2 } from "lucide-react";
+import { LayoutDashboard, Check, CheckCircle2 } from "lucide-react";
 
 /* ══════════════════════════════════════════════════════
    Toggle
@@ -56,7 +56,6 @@ function DashboardFeaturesCard() {
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
     if (data?.overviewName) setOverviewNameInput(data.overviewName);
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (data?.qaDashboardName) setQaName(data.qaDashboardName);
   }, [data]);
 

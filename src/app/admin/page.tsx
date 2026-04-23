@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { Building2, Plus, Users, FolderOpen, CheckCircle2, XCircle, Mail, Eye, Trash2, Globe, RefreshCw } from "lucide-react";
+import { Building2, Plus, Users, FolderOpen, CheckCircle2, Mail, Eye, Trash2, Globe, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
