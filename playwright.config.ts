@@ -1,4 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
 
 // Three test projects share a single "setup" dependency that logs in as three different users
 // and saves their session cookies to tests/.auth/*.json before any spec runs.
