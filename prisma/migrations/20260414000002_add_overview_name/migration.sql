@@ -1,2 +1,2 @@
 -- AlterTable
-ALTER TABLE "Organization" ADD COLUMN "overviewName" TEXT NOT NULL DEFAULT 'Visão Geral';
+ALTER TABLE "organizations" ADD COLUMN "overviewName" TEXT NOT NULL DEFAULT 'Visão Geral';
