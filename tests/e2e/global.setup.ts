@@ -6,6 +6,8 @@
 
 import { test as setup, expect } from "@playwright/test";
 import { PrismaClient } from "@prisma/client";
+import { PrismaPg } from "@prisma/adapter-pg";
+import { Pool } from "pg";
 import bcrypt from "bcryptjs";
 import fs from "fs";
 
@@ -18,7 +20,14 @@ setup("seed test fixtures and save auth states", async ({ page }) => {
   fs.mkdirSync("tests/.auth", { recursive: true });
 
   // Use Prisma directly (bypassing HTTP) so setup doesn't depend on the server being up yet.
-  const prisma = new PrismaClient();
+  // The schema has no url= block (uses driver adapters), so we must provide the adapter here too.
+  const dbUrl = process.env.DATABASE_URL!;
+  const pool = new Pool({
+    connectionString: dbUrl,
+    ssl: dbUrl.includes("supabase.com") ? { rejectUnauthorized: false } : false,
+  });
+  const adapter = new PrismaPg(pool);
+  const prisma = new PrismaClient({ adapter });
   try {
     const existing = await prisma.user.findUnique({
       where: { email: "e2e-isolated@test.com" },
@@ -53,6 +62,7 @@ setup("seed test fixtures and save auth states", async ({ page }) => {
     }
   } finally {
     await prisma.$disconnect();
+    await pool.end();
   }
 
   // Log in as admin and capture the session cookie.
