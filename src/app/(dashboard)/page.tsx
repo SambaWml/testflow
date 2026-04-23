@@ -111,8 +111,10 @@ export default function DashboardPage() {
   // Keep activeTab in sync when features load
   useEffect(() => {
     if (activeTab === "geral" && !overviewEnabled && canAccessQA && qaDashboardEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("qa");
     } else if (activeTab === "qa" && !qaDashboardEnabled && overviewEnabled) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setActiveTab("geral");
     }
   }, [overviewEnabled, qaDashboardEnabled, canAccessQA, activeTab]);

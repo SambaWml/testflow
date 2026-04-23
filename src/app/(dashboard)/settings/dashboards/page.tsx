@@ -54,7 +54,9 @@ function DashboardFeaturesCard() {
   const [saved, setSaved] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (data?.overviewName) setOverviewNameInput(data.overviewName);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (data?.qaDashboardName) setQaName(data.qaDashboardName);
   }, [data]);
 

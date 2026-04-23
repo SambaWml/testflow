@@ -60,11 +60,8 @@ jobs:
       - name: Type check
         run: npx tsc --noEmit
 
-      # Lint is run to surface issues but does not block the pipeline —
-      # the project has pre-existing warnings that are being cleaned up separately.
       - name: Lint
         run: npm run lint
-        continue-on-error: true
 
       # Only chromium is installed — Firefox/Safari coverage is not needed for API-heavy tests.
       - name: Install Playwright browsers

@@ -561,7 +561,7 @@ function ReportView({ report }: { report: {
                   {ex.executedAt && <span className="text-xs text-muted-foreground">{format(new Date(ex.executedAt), "dd/MM HH:mm", { locale })}</span>}
                   {ex.relatedBugRef && <span className="text-xs font-mono text-red-600">🐛 {ex.relatedBugRef}</span>}
                 </div>
-                {ex.notes && <p className="text-xs text-muted-foreground mt-1 italic">"{ex.notes}"</p>}
+                {ex.notes && <p className="text-xs text-muted-foreground mt-1 italic">&ldquo;{ex.notes}&rdquo;</p>}
                 {ex.evidence.filter((ev) => ev.type === "IMAGE" && ev.storageKey).length > 0 && (
                   <div className="flex gap-1 mt-2 flex-wrap">
                     {ex.evidence.filter((ev) => ev.type === "IMAGE" && ev.storageKey).map((ev, i) => (

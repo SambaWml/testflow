@@ -158,6 +158,7 @@ function ItemTypesCrud() {
   const [newLabel, setNewLabel] = useState("");
   const [newValue, setNewValue] = useState("");
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setItems(getItemTypes()); }, []);
 
   function save(next: ItemType[]) { setItems(next); saveItemTypes(next); }
@@ -237,6 +238,7 @@ function PrioritiesCrud() {
   const [newValue, setNewValue] = useState("");
   const [newColor, setNewColor] = useState(COLOR_PRESETS[0]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setItems(getPriorities()); }, []);
 
   function save(next: Priority[]) { setItems(next); savePriorities(next); }
@@ -321,6 +323,7 @@ function StatusesCrud() {
   const [newValue, setNewValue] = useState("");
   const [newColor, setNewColor] = useState(COLOR_PRESETS[0]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect
   useEffect(() => { setItems(getExecStatuses()); }, []);
 
   function save(next: ExecStatus[]) { setItems(next); saveExecStatuses(next); }

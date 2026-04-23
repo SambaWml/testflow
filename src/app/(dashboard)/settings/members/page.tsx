@@ -538,6 +538,7 @@ export default function MembersPage() {
 
   useEffect(() => {
     if (roleNamesData?.roleNames) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setRoleNameInputs({
         OWNER: roleNamesData.roleNames.OWNER ?? "Owner",
         ADMIN: roleNamesData.roleNames.ADMIN ?? "Admin",

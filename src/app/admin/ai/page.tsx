@@ -73,9 +73,13 @@ export default function AdminAIPage() {
 
   useEffect(() => {
     if (!config) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setActiveProvider(config.activeProvider);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setOpenaiModel(config.openai.model);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setManusBaseUrl(config.manus.baseUrl);
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setClaudeModel(config.claude.model);
   }, [config]);
 

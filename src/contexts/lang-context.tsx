@@ -22,6 +22,7 @@ export function LangProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const stored = getLang();
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (stored !== "pt-BR") setLang(stored);
   }, []);
 

@@ -413,7 +413,7 @@ function DeleteDialog({ bug, onClose }: { bug: BugItem; onClose: () => void }) {
           </DialogTitle>
         </DialogHeader>
         <p className="text-sm text-muted-foreground">
-          Excluir <span className="font-semibold text-foreground">"{bug.title}"</span>? Esta ação é irreversível.
+          Excluir <span className="font-semibold text-foreground">&ldquo;{bug.title}&rdquo;</span>? Esta ação é irreversível.
         </p>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>

@@ -165,7 +165,7 @@ function DeleteProjectDialog({
         </DialogHeader>
         <div className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Tem certeza que deseja excluir <span className="font-semibold text-foreground">"{project.name}"</span>?
+            Tem certeza que deseja excluir <span className="font-semibold text-foreground">&ldquo;{project.name}&rdquo;</span>?
             Esta ação é irreversível.
           </p>
           {total > 0 && (
