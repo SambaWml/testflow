@@ -6,8 +6,8 @@ CREATE TABLE "users" (
     "passwordHash" TEXT,
     "role" TEXT NOT NULL DEFAULT 'TESTER',
     "avatarUrl" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -32,7 +32,7 @@ CREATE TABLE "sessions" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "sessionToken" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
-    "expires" DATETIME NOT NULL,
+    "expires" TIMESTAMP NOT NULL,
     CONSTRAINT "sessions_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -43,8 +43,8 @@ CREATE TABLE "projects" (
     "description" TEXT,
     "slug" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -53,7 +53,7 @@ CREATE TABLE "modules" (
     "name" TEXT NOT NULL,
     "description" TEXT,
     "projectId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "modules_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -71,8 +71,8 @@ CREATE TABLE "items" (
     "acceptanceCriteria" TEXT,
     "notes" TEXT,
     "authorId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "items_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "items_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES "modules" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "items_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -94,8 +94,8 @@ CREATE TABLE "test_cases" (
     "isAutomated" BOOLEAN NOT NULL DEFAULT false,
     "version" INTEGER NOT NULL DEFAULT 1,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "bddGiven" TEXT,
     "bddWhen" TEXT,
     "bddThen" TEXT,
@@ -124,14 +124,14 @@ CREATE TABLE "executions" (
     "projectId" TEXT NOT NULL,
     "executorId" TEXT NOT NULL,
     "status" TEXT NOT NULL DEFAULT 'NOT_EXECUTED',
-    "executedAt" DATETIME,
+    "executedAt" TIMESTAMP,
     "environment" TEXT NOT NULL DEFAULT '',
     "buildVersion" TEXT,
     "notes" TEXT,
     "relatedBugRef" TEXT,
     "duration" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "executions_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "test_cases" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "executions_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "executions_executorId_fkey" FOREIGN KEY ("executorId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -149,7 +149,7 @@ CREATE TABLE "evidence" (
     "publicUrl" TEXT,
     "linkUrl" TEXT,
     "description" TEXT,
-    "uploadedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "uploadedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "evidence_executionId_fkey" FOREIGN KEY ("executionId") REFERENCES "executions" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
@@ -161,11 +161,11 @@ CREATE TABLE "reports" (
     "authorId" TEXT NOT NULL,
     "environment" TEXT,
     "buildVersion" TEXT,
-    "dateFrom" DATETIME,
-    "dateTo" DATETIME,
+    "dateFrom" TIMESTAMP,
+    "dateTo" TIMESTAMP,
     "notes" TEXT,
     "pdfUrl" TEXT,
-    "generatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "generatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "metadata" TEXT NOT NULL DEFAULT '{}',
     CONSTRAINT "reports_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "reports_authorId_fkey" FOREIGN KEY ("authorId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -186,7 +186,7 @@ CREATE TABLE "settings" (
     "id" TEXT NOT NULL PRIMARY KEY,
     "key" TEXT NOT NULL,
     "value" TEXT NOT NULL DEFAULT '[]',
-    "updatedAt" DATETIME NOT NULL
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -201,7 +201,7 @@ CREATE TABLE "generation_logs" (
     "language" TEXT NOT NULL,
     "coverageLevel" TEXT NOT NULL,
     "testType" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateIndex

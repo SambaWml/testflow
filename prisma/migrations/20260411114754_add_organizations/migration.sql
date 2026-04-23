@@ -6,8 +6,8 @@ CREATE TABLE "organizations" (
     "logoUrl" TEXT,
     "plan" TEXT NOT NULL DEFAULT 'FREE',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 -- CreateTable
@@ -16,8 +16,8 @@ CREATE TABLE "org_members" (
     "organizationId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'MEMBER',
-    "invitedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "joinedAt" DATETIME,
+    "invitedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "joinedAt" TIMESTAMP,
     CONSTRAINT "org_members_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "org_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -28,7 +28,7 @@ CREATE TABLE "project_members" (
     "projectId" TEXT NOT NULL,
     "userId" TEXT NOT NULL,
     "role" TEXT NOT NULL DEFAULT 'VIEWER',
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "project_members_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "project_members_userId_fkey" FOREIGN KEY ("userId") REFERENCES "users" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
@@ -45,10 +45,10 @@ CREATE TABLE "test_plans" (
     "environment" TEXT NOT NULL DEFAULT '',
     "buildVersion" TEXT,
     "notes" TEXT,
-    "startedAt" DATETIME,
-    "completedAt" DATETIME,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "startedAt" TIMESTAMP,
+    "completedAt" TIMESTAMP,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "test_plans_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "test_plans_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "test_plans_creatorId_fkey" FOREIGN KEY ("creatorId") REFERENCES "users" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
@@ -75,14 +75,14 @@ CREATE TABLE "new_executions" (
     "executorId" TEXT NOT NULL,
     "testPlanId" TEXT,
     "status" TEXT NOT NULL DEFAULT 'NOT_EXECUTED',
-    "executedAt" DATETIME,
+    "executedAt" TIMESTAMP,
     "environment" TEXT NOT NULL DEFAULT '',
     "buildVersion" TEXT,
     "notes" TEXT,
     "relatedBugRef" TEXT,
     "duration" INTEGER,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "executions_caseId_fkey" FOREIGN KEY ("caseId") REFERENCES "test_cases" ("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "executions_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "executions_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
@@ -106,8 +106,8 @@ CREATE TABLE "new_items" (
     "acceptanceCriteria" TEXT,
     "notes" TEXT,
     "authorId" TEXT NOT NULL,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "items_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "items_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
     CONSTRAINT "items_moduleId_fkey" FOREIGN KEY ("moduleId") REFERENCES "modules" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
@@ -123,8 +123,8 @@ CREATE TABLE "new_projects" (
     "slug" TEXT NOT NULL,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
     "organizationId" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     CONSTRAINT "projects_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations" ("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 INSERT INTO "new_projects" ("createdAt", "description", "id", "isActive", "name", "slug", "updatedAt") SELECT "createdAt", "description", "id", "isActive", "name", "slug", "updatedAt" FROM "projects";
@@ -139,11 +139,11 @@ CREATE TABLE "new_reports" (
     "authorId" TEXT NOT NULL,
     "environment" TEXT,
     "buildVersion" TEXT,
-    "dateFrom" DATETIME,
-    "dateTo" DATETIME,
+    "dateFrom" TIMESTAMP,
+    "dateTo" TIMESTAMP,
     "notes" TEXT,
     "pdfUrl" TEXT,
-    "generatedAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "generatedAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "metadata" TEXT NOT NULL DEFAULT '{}',
     CONSTRAINT "reports_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "projects" ("id") ON DELETE CASCADE ON UPDATE CASCADE,
     CONSTRAINT "reports_organizationId_fkey" FOREIGN KEY ("organizationId") REFERENCES "organizations" ("id") ON DELETE SET NULL ON UPDATE CASCADE,
@@ -168,8 +168,8 @@ CREATE TABLE "new_test_cases" (
     "isAutomated" BOOLEAN NOT NULL DEFAULT false,
     "version" INTEGER NOT NULL DEFAULT 1,
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL,
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL,
     "bddGiven" TEXT,
     "bddWhen" TEXT,
     "bddThen" TEXT,
@@ -192,8 +192,8 @@ CREATE TABLE "new_users" (
     "role" TEXT NOT NULL DEFAULT 'TESTER',
     "isSuperAdmin" BOOLEAN NOT NULL DEFAULT false,
     "avatarUrl" TEXT,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 INSERT INTO "new_users" ("avatarUrl", "createdAt", "email", "id", "name", "passwordHash", "role", "updatedAt") SELECT "avatarUrl", "createdAt", "email", "id", "name", "passwordHash", "role", "updatedAt" FROM "users";
 DROP TABLE "users";

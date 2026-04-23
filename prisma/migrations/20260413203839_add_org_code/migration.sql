@@ -11,8 +11,8 @@ CREATE TABLE "new_organizations" (
     "logoUrl" TEXT,
     "plan" TEXT NOT NULL DEFAULT 'FREE',
     "isActive" BOOLEAN NOT NULL DEFAULT true,
-    "createdAt" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    "updatedAt" DATETIME NOT NULL
+    "createdAt" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP NOT NULL
 );
 
 INSERT INTO "new_organizations" ("id", "code", "name", "slug", "logoUrl", "plan", "isActive", "createdAt", "updatedAt")
