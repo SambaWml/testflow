@@ -228,7 +228,13 @@ function ProjectCard({
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
-              <span className="font-semibold text-sm">{project.name}</span>
+              <Link
+                href={`/projects/${project.id}`}
+                onClick={(e) => e.stopPropagation()}
+                className="font-semibold text-sm hover:text-primary hover:underline underline-offset-2 transition-colors"
+              >
+                {project.name}
+              </Link>
               <Badge variant={project.isActive ? "success" : "secondary"} className="text-xs">
                 {project.isActive ? t.common.active : t.common.inactive}
               </Badge>

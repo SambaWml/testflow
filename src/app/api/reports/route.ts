@@ -49,14 +49,22 @@ export async function POST(req: Request) {
     if (!testPlan) {
       return NextResponse.json({ error: "Plano não encontrado" }, { status: 404 });
     }
+    // IDOR guard: findUnique doesn't scope by org, so we check explicitly here.
+    // Return 404 (not 403) to avoid confirming that the plan ID exists in another org.
+    if (!u.isSuperAdmin && testPlan.organizationId && u.orgId && testPlan.organizationId !== u.orgId) {
+      return NextResponse.json({ error: "Plano não encontrado" }, { status: 404 });
+    }
     if (!testPlan.executions.length) {
       return NextResponse.json({ error: "O plano não possui execuções registradas" }, { status: 400 });
     }
 
+    // Snapshot execution stats into JSON metadata at report creation time.
+    // This ensures the report is immutable — later execution changes won't alter past reports.
     const counts: Record<string, number> = {};
     testPlan.executions.forEach((ex) => { counts[ex.status] = (counts[ex.status] ?? 0) + 1; });
     const total = testPlan.executions.length;
     const pass = counts.PASS ?? 0;
+    // Pass rate excludes NOT_EXECUTED and SKIPPED so it reflects only what was actually run.
     const executed = total - (counts.NOT_EXECUTED ?? 0) - (counts.SKIPPED ?? 0);
     const passRate = executed > 0 ? Math.round((pass / executed) * 100) : 0;
 

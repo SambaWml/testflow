@@ -1,0 +1,82 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    services:
+      # Ephemeral Postgres — created fresh per run so tests never share state across jobs.
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: testflow
+          POSTGRES_PASSWORD: testflow
+          POSTGRES_DB: testflow_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    env:
+      DATABASE_URL: "postgresql://testflow:testflow@localhost:5432/testflow_test"
+      # NEXTAUTH_SECRET only needs to be consistent within the run, not a real secret.
+      NEXTAUTH_SECRET: "ci-test-secret-not-for-production"
+      NEXTAUTH_URL: "http://localhost:3000"
+      NODE_ENV: test
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      # migrate deploy runs production-style migrations (no schema drift detection).
+      - name: Run database migrations
+        run: npx prisma migrate deploy
+
+      # Seed creates admin/superadmin accounts used by auth.spec and navigation.spec.
+      - name: Seed database
+        run: npm run seed
+
+      - name: Type check
+        run: npx tsc --noEmit
+
+      # Lint is run to surface issues but does not block the pipeline —
+      # the project has pre-existing warnings that are being cleaned up separately.
+      - name: Lint
+        run: npm run lint
+        continue-on-error: true
+
+      # Only chromium is installed — Firefox/Safari coverage is not needed for API-heavy tests.
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Run E2E tests
+        run: npm run test:e2e
+
+      # Always upload report so failures can be diagnosed even when the job is cancelled.
+      - name: Upload Playwright report
+        uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

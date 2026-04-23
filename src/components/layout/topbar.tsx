@@ -1,6 +1,6 @@
 "use client";
 
-import { Bell, Eye, EyeOff, Pencil, Loader2, User, LogOut, Moon, Sun } from "lucide-react";
+import { Bell, Eye, EyeOff, Pencil, Loader2, User, LogOut, Moon, Sun, AlertCircle, AlertTriangle, Info, ChevronRight, CheckCircle2 } from "lucide-react";
 import { useTheme } from "@/contexts/theme-context";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,6 +13,28 @@ import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLang } from "@/contexts/lang-context";
+import Link from "next/link";
+import { cn } from "@/lib/utils";
+
+type Notification = {
+  id: string;
+  type: "error" | "warning" | "info";
+  title: string;
+  body: string;
+  href: string;
+};
+
+const NOTIF_ICONS = {
+  error: AlertCircle,
+  warning: AlertTriangle,
+  info: Info,
+};
+
+const NOTIF_COLORS = {
+  error: "text-red-500",
+  warning: "text-amber-500",
+  info: "text-blue-500",
+};
 
 interface TopbarProps {
   title: string;
@@ -22,9 +44,21 @@ interface TopbarProps {
 
 export function Topbar({ title, subtitle, actions }: TopbarProps) {
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
   const { data: session } = useSession();
   const { t } = useLang();
   const { theme, toggleTheme } = useTheme();
+
+  // Poll every 60s so the bell badge stays fresh without a WebSocket connection.
+  // staleTime of 30s prevents redundant refetches when the user switches tabs quickly.
+  const { data: notifData } = useQuery({
+    queryKey: ["notifications"],
+    queryFn: () => fetch("/api/notifications").then((r) => r.json()),
+    refetchInterval: 60_000,
+    staleTime: 30_000,
+  });
+  const notifications: Notification[] = notifData?.notifications ?? [];
+  const notifCount: number = notifData?.total ?? 0;
 
   const initials = (session?.user?.name ?? "U")
     .split(" ")
@@ -44,9 +78,53 @@ export function Topbar({ title, subtitle, actions }: TopbarProps) {
         <Button variant="ghost" size="icon" onClick={toggleTheme} title={theme === "dark" ? "Modo claro" : "Modo escuro"}>
           {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
         </Button>
-        <Button variant="ghost" size="icon">
-          <Bell className="h-4 w-4" />
-        </Button>
+        <DropdownMenu open={notifOpen} onOpenChange={setNotifOpen}>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="relative">
+              <Bell className="h-4 w-4" />
+              {notifCount > 0 && (
+                <span className="absolute -top-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white leading-none">
+                  {notifCount > 9 ? "9+" : notifCount}
+                </span>
+              )}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-80 p-0">
+            <div className="flex items-center justify-between px-4 py-3 border-b">
+              <p className="font-semibold text-sm">Notificações</p>
+              {notifCount > 0 && (
+                <span className="text-xs text-muted-foreground">{notifCount} nova{notifCount > 1 ? "s" : ""}</span>
+              )}
+            </div>
+            {notifications.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-4">
+                <CheckCircle2 className="h-8 w-8 text-muted-foreground/30 mb-2" />
+                <p className="text-sm text-muted-foreground">Tudo em dia!</p>
+              </div>
+            ) : (
+              <div className="divide-y max-h-72 overflow-y-auto">
+                {notifications.map((n) => {
+                  const Icon = NOTIF_ICONS[n.type];
+                  return (
+                    <Link
+                      key={n.id}
+                      href={n.href}
+                      onClick={() => setNotifOpen(false)}
+                      className="flex items-start gap-3 px-4 py-3 hover:bg-accent/50 transition-colors"
+                    >
+                      <Icon className={cn("h-4 w-4 mt-0.5 shrink-0", NOTIF_COLORS[n.type])} />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium leading-tight">{n.title}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{n.body}</p>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                    </Link>
+                  );
+                })}
+              </div>
+            )}
+          </DropdownMenuContent>
+        </DropdownMenu>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button

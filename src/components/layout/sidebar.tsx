@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, FolderOpen, TestTube2, Wand2, Play, BarChart3,
   Settings, ChevronLeft, ChevronRight, FlaskConical, Users, ShieldCheck,
-  ChevronDown, ChevronUp, FolderCog, SlidersHorizontal, Bug, Tag, Info, WandSparkles,
+  ChevronDown, ChevronUp, FolderCog, SlidersHorizontal, Bug, Tag, WandSparkles, BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -66,6 +66,7 @@ export function Sidebar() {
     isSuperAdmin?: boolean; orgRole?: string; name?: string; email?: string;
   } | undefined;
 
+  // Orgs can rename roles (e.g. "OWNER" → "QA Lead"); fall back to defaults if not configured.
   const { data: roleNamesData } = useQuery<{ roleNames: Record<string, string> }>({
     queryKey: ["role-names"],
     queryFn: () => fetch("/api/orgs/role-names").then((r) => r.json()),
@@ -207,6 +208,24 @@ export function Sidebar() {
               );
             })}
           </div>
+        )}
+
+        {/* API Docs only shown to users who can manage settings or super admins —
+            members shouldn't see integration docs they can't act on. */}
+        {(canManageSettings || user?.isSuperAdmin) && (
+          <a
+            href="/api-docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            title={collapsed ? "API Docs" : undefined}
+            className={cn(
+              "relative flex items-center gap-2.5 rounded-lg py-2 text-sm transition-colors text-muted-foreground hover:bg-muted/60 hover:text-foreground mt-0.5",
+              collapsed ? "justify-center w-9 mx-auto px-0" : "px-3"
+            )}
+          >
+            <BookOpen className="h-4 w-4 shrink-0" />
+            {!collapsed && <span>API Docs</span>}
+          </a>
         )}
 
         {/* Admin link */}

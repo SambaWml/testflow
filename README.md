@@ -1,6 +1,9 @@
 # TestFlow
 
-Plataforma web multi-tenant para planejamento, execução e reporte de testes de software — com geração de casos de teste via IA e painel de super-administração.
+Plataforma web multi-tenant para planejamento, execução e reporte de testes de software — com geração de casos de teste via IA, notificações em tempo real e painel de super-administração.
+
+> **Documentação técnica completa:** [SYSTEM.md](SYSTEM.md)  
+> **Guia de deploy:** [DEPLOY.md](DEPLOY.md)
 
 ---
 
@@ -11,22 +14,25 @@ Plataforma web multi-tenant para planejamento, execução e reporte de testes de
 | Módulo | Descrição |
 |--------|-----------|
 | **Dashboard** | Visão geral com KPIs, gráfico de status, taxa de aprovação e ações rápidas. Dashboard QA com filtros por período, membro, projeto e prioridade. |
-| **Projetos** | Organiza itens e casos de teste por projeto. Suporte a múltiplos tipos de item (User Story, Bug, Melhoria, Requisito, Fluxo, Tarefa). |
+| **Projetos** | Lista e detalhe de projetos com stat cards e tabs de itens, casos, planos e bugs. |
 | **Casos de Teste** | Visualização em lista ou grade, filtros por projeto/formato/prioridade, exclusão em lote. |
-| **Gerador IA** | Geração de casos BDD ou Step-by-Step via IA. Suporte a OpenAI, Manus AI e Claude. Pode criar Plano de Teste diretamente após a geração. |
-| **Execuções** | Executa planos de teste caso a caso, registra status, notas, bugs relacionados e múltiplos links de evidência. Permite navegar para casos anteriores mantendo os rascunhos. |
+| **Gerador IA** | Geração de casos BDD ou Step-by-Step via IA. Suporte a OpenAI, Manus AI e Ollama. Pode criar Plano de Teste diretamente após a geração. |
+| **Execuções** | Executa planos de teste caso a caso, registra status, notas, bugs relacionados e evidências. |
 | **Relatórios** | Consolida execuções, exibe estatísticas de aprovação/reprovação, exporta para PDF ou copia como Markdown. |
 | **Bugs** | Registro e acompanhamento de bugs com status, prioridade e projeto. |
+| **Notificações** | Bell icon na topbar com polling de 60s — exibe falhas recentes, execuções pendentes e novos membros. |
+| **API Docs** | Swagger UI interativo em `/api-docs`, acessível para admins e owners. |
 
 ### Configurações
 
 | Submenu | Descrição |
 |---------|-----------|
-| **Geral** | Nome da organização, idioma (pt-BR / en-US) e aba "Sobre" com informações da plataforma. |
-| **Dashboards** | Ativa/desativa e renomeia os dashboards "Visão Geral" e "Dashboard QA" (somente Owner). |
-| **Termos** | Personaliza os 12 termos do sistema (singular e plural) — ex.: renomear "Bug" para "Defeito". |
+| **Geral** | Nome da organização, idioma (pt-BR / en-US) e aba "Sobre". |
+| **Dashboards** | Ativa/desativa e renomeia os dashboards (somente Owner). |
+| **Termos** | Personaliza os 12 termos do sistema (singular e plural). |
 | **Membros** | Convida, visualiza e remove membros da organização. |
-| **Projetos** | Gerencia os projetos da organização, incluindo exclusão com contagem de itens vinculados. |
+| **Projetos** | Gerencia os projetos da organização. |
+| **Gerador IA** | Formatos bloqueados + padrões de geração (idioma, quantidade, cobertura, tipo, prioridade) salvos em localStorage. |
 
 ### Painel Super Admin (`/admin`)
 
@@ -34,7 +40,7 @@ Plataforma web multi-tenant para planejamento, execução e reporte de testes de
 |-------|-----------|
 | **Organizações** | Lista, cria, ativa/desativa e exclui organizações. |
 | **Super Admins** | Gerencia contas com acesso ao painel de administração. |
-| **Configuração IA** | Define o provedor de IA ativo (OpenAI / Manus AI / Claude) e suas chaves de API e modelos. |
+| **Configuração IA** | Define o provedor de IA ativo (OpenAI / Manus AI / Ollama) e suas chaves de API. |
 
 ---
 
@@ -48,13 +54,15 @@ Plataforma web multi-tenant para planejamento, execução e reporte de testes de
 | Formulários | React Hook Form + Zod |
 | Estado servidor | TanStack Query v5 |
 | Estado global | Zustand |
-| Auth | NextAuth v5 (JWT) |
+| Auth | NextAuth v5 (JWT, credentials) |
 | ORM | Prisma 7 |
 | Banco | PostgreSQL (Supabase) |
-| IA | OpenAI SDK / Manus AI / Anthropic Claude |
+| IA | OpenAI SDK / Manus AI / Ollama |
 | Gráficos | Recharts |
 | PDF | @react-pdf/renderer |
 | Email | Nodemailer (SMTP) |
+| Testes | Playwright 1.59 |
+| CI | GitHub Actions |
 
 ---
 
@@ -63,7 +71,7 @@ Plataforma web multi-tenant para planejamento, execução e reporte de testes de
 ### Requisitos
 
 - Node.js 20+
-- Banco PostgreSQL (ex.: Supabase)
+- Banco PostgreSQL (ex.: Supabase) **ou** SQLite para desenvolvimento
 
 ### Instalação
 
@@ -98,7 +106,9 @@ SMTP_FROM=TestFlow <seu@email.com>
 # IA — opcional, configurável também pelo painel Super Admin
 # OPENAI_API_KEY="sk-..."
 # MANUS_API_KEY="sk-..."
-# ANTHROPIC_API_KEY="sk-ant-..."
+# MANUS_BASE_URL="https://api.manus.ai"
+# OLLAMA_URL="http://localhost:11434"
+# OLLAMA_MODEL="deepseek-r1:7b"
 ```
 
 ### Banco de dados
@@ -119,14 +129,52 @@ npm run dev
 
 Acesse: http://localhost:3000
 
-**Login super admin:** `superadmin@testflow.com` / `superadmin123`  
-**Login demo:** `admin@testflow.com` / `admin123`
+**Login super admin:** `superadmin@testflow.com` / `admin123`  
+**Login demo (org):** `admin@testflow.com` / `admin123`
+
+---
+
+## Testes E2E
+
+O projeto usa **Playwright** com 3 contextos de usuário (admin, super admin, org isolada).
+
+```bash
+# Requisito: servidor rodando em localhost:3000
+npm run dev
+
+# Em outro terminal:
+npm run test:e2e          # headless
+npm run test:e2e:ui       # interface visual do Playwright
+npm run test:e2e:debug    # modo debug
+npm run test:e2e:report   # abre HTML report
+```
+
+**Cobertura (~120 cenários):**
+- Redirecionamentos e 401 sem autenticação
+- Todas as páginas do dashboard carregam
+- CRUD completo de projetos, casos, itens, bugs, planos, membros
+- Testes de isolamento IDOR entre organizações
+- Painel super-admin
+
+---
+
+## CI/CD
+
+GitHub Actions em `.github/workflows/ci.yml`:
+
+1. PostgreSQL 16 efêmero como service
+2. `prisma migrate deploy` + `npm run seed`
+3. Type check (`tsc --noEmit`)
+4. Lint (`npm run lint`)
+5. Playwright E2E com upload do HTML report como artefato
+
+Triggers: push e pull request para `master`/`main`.
 
 ---
 
 ## Migrations (Prisma 7 + Supabase)
 
-O Supabase usa um connection pooler (porta 6543) para runtime, mas DDL (CREATE TABLE, ALTER TABLE) requer conexão direta (porta 5432). O `prisma.config.ts` já está configurado para usar `DIRECT_URL` nas migrations.
+O Supabase usa um connection pooler (porta 6543) para runtime, mas DDL requer conexão direta (porta 5432). O `prisma.config.ts` já está configurado para usar `DIRECT_URL` nas migrations.
 
 ```bash
 # Aplicar migrations pendentes
@@ -134,12 +182,59 @@ npx prisma migrate deploy
 
 # Criar nova migration durante desenvolvimento
 npx prisma migrate dev --name nome_da_migration
-
-# Sincronizar schema sem gerar arquivo de migration (não recomendado em produção)
-npx prisma db push
 ```
 
 > **Atenção:** nunca use o pooler (porta 6543) para migrations — o Supabase Supavisor rejeita DDL nesse modo.
+
+---
+
+## Multi-tenancy e Permissões
+
+Cada organização tem dados completamente isolados por `organizationId`.
+
+| Papel | Permissões |
+|-------|-----------|
+| **Super Admin** | Acesso ao `/admin`; gerencia todas as orgs |
+| **Owner** | Tudo do Admin + configurações da org (dashboards, termos) |
+| **Admin** | Vê todos os projetos; convida membros; cria projetos |
+| **Member** | Acesso aos projetos onde foi explicitamente adicionado |
+
+Recursos de outras organizações sempre retornam **404** (não 403) para não confirmar existência — proteção contra IDOR.
+
+---
+
+## Segurança
+
+- Senhas hashed com `bcrypt` (cost factor 12)
+- RLS habilitado em todas as tabelas no Supabase (migração `20260422000000_enable_rls`)
+- Endpoints com guard `findFirst({ id, organizationId })` em vez de `findUnique`
+- Testes de isolamento automatizados no CI (`isolation.spec.ts` — 21 cenários IDOR)
+
+---
+
+## Rotas
+
+| Rota | Tela |
+|------|------|
+| `/` | Dashboard principal |
+| `/projects` | Lista de projetos |
+| `/projects/[id]` | Detalhe do projeto (tabs: itens, casos, planos, bugs) |
+| `/cases` | Casos de teste |
+| `/generator` | Gerador IA de casos |
+| `/generator/bugs` | Gerador IA de bugs |
+| `/executions` | Execuções |
+| `/reports` | Relatórios |
+| `/bugs` | Bugs |
+| `/settings/general` | Configurações gerais + Sobre |
+| `/settings/dashboards` | Gerenciamento de dashboards |
+| `/settings/terms` | Terminologia personalizada |
+| `/settings/members` | Membros da organização |
+| `/settings/projects` | Projetos da organização |
+| `/settings/generator` | Gerador IA — formatos e padrões |
+| `/admin` | Painel super admin — organizações |
+| `/admin/admins` | Super admins |
+| `/admin/ai` | Configuração do provedor de IA |
+| `/api-docs` | Swagger UI (admins/owners) |
 
 ---
 
@@ -157,10 +252,10 @@ O sistema expõe 12 termos editáveis via **Configurações → Termos**. Os ter
 | `planoDeTeste` | Plano de Teste / Planos de Teste |
 | `item` | Item / Itens |
 | `ambiente` | Ambiente / Ambientes |
-| `build` | Build / Versão / Builds / Versões |
+| `build` | Build / Versão |
 | `evidencia` | Evidência / Evidências |
-| `bugRelacionado` | Bug Relacionado / Bugs Relacionados |
-| `preCondicao` | Pré-condição / Pré-condições |
+| `bugRelacionado` | Bug Relacionado |
+| `preCondicao` | Pré-condição |
 
 ---
 
@@ -172,42 +267,6 @@ A configuração do provedor ativo é feita pelo Super Admin em `/admin/ai`. Fal
 |----------|--------------|---------|
 | OpenAI | `gpt-4o` | `OPENAI_API_KEY` |
 | Manus AI | `claude-sonnet-4-5` | `MANUS_API_KEY` + `MANUS_BASE_URL` |
-| Claude (Anthropic) | `claude-sonnet-4-6` | `ANTHROPIC_API_KEY` |
+| Ollama | configurável | `OLLAMA_URL` + `OLLAMA_MODEL` |
 
-Sem provedor configurado, o gerador retorna casos de teste mockados para não bloquear o fluxo.
-
----
-
-## Rotas
-
-| Rota | Tela |
-|------|------|
-| `/` | Dashboard principal |
-| `/projects` | Projetos e itens |
-| `/cases` | Casos de teste |
-| `/generator` | Gerador IA |
-| `/executions` | Execuções |
-| `/reports` | Relatórios |
-| `/bugs` | Bugs |
-| `/settings/general` | Configurações gerais + Sobre |
-| `/settings/dashboards` | Gerenciamento de dashboards |
-| `/settings/terms` | Terminologia personalizada |
-| `/settings/members` | Membros da organização |
-| `/settings/projects` | Projetos da organização |
-| `/admin` | Painel super admin — organizações |
-| `/admin/admins` | Super admins |
-| `/admin/ai` | Configuração do provedor de IA |
-
----
-
-## Multi-tenancy
-
-Cada organização tem membros com papéis:
-
-| Papel | Permissões |
-|-------|-----------|
-| `OWNER` | Acesso total, incluindo configurações de dashboards e termos |
-| `ADMIN` | Gerencia membros, projetos e execuções |
-| `MEMBER` | Acesso de leitura e execução |
-
-Super Admins têm acesso ao painel `/admin` independentemente de pertencer a uma organização.
+Sem provedor configurado, o gerador retorna casos mockados para não bloquear o fluxo.
