@@ -257,16 +257,6 @@ O sistema expõe 12 termos editáveis via **Configurações → Termos**. Os ter
 | `bugRelacionado` | Bug Relacionado |
 | `preCondicao` | Pré-condição |
 
----
 
-## Provedores de IA
-
-A configuração do provedor ativo é feita pelo Super Admin em `/admin/ai`. Fallback para variáveis de ambiente se não houver configuração no banco.
-
-| Provedor | Modelo padrão | Env var |
-|----------|--------------|---------|
-| OpenAI | `gpt-4o` | `OPENAI_API_KEY` |
-| Manus AI | `claude-sonnet-4-5` | `MANUS_API_KEY` + `MANUS_BASE_URL` |
-| Ollama | configurável | `OLLAMA_URL` + `OLLAMA_MODEL` |
 
 Sem provedor configurado, o gerador retorna casos mockados para não bloquear o fluxo.
